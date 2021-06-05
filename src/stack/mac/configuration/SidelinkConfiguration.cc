@@ -32,303 +32,304 @@
 #include "stack/mac/amc/LteMcs.h"
 #include <map>
 #include "stack/mac/packet/SPSResourcePoolMode4.h"
+#include"common/LteControlInfo.h"
 Define_Module(SidelinkConfiguration);
 
 SidelinkConfiguration::SidelinkConfiguration()
 {
-    mac = NULL;
-    mode4Grant = NULL;
-    mode3Grant = NULL;
-    schedulingGrant_ = NULL;
-    slGrant = NULL;
+	mac = NULL;
+	mode4Grant = NULL;
+	mode3Grant = NULL;
+	schedulingGrant_ = NULL;
+	slGrant = NULL;
 }
 
 SidelinkConfiguration::~SidelinkConfiguration()
 {
-    delete mac;
+	delete mac;
 
 }
 
 void SidelinkConfiguration::initialize(int stage)
 {
 
-    if (stage !=inet::INITSTAGE_NETWORK_LAYER)
-        //  LteMacUeD2D::initialize(stage);
-    {}
+	if (stage !=inet::INITSTAGE_NETWORK_LAYER)
+		//  LteMacUeD2D::initialize(stage);
+	{}
 
-    if (stage == inet::INITSTAGE_LOCAL)
-    {
-        EV<<"SidelinkConfiguration::initialize, stage: "<<stage<<endl;
-        parseUeTxConfig(par("txConfig").xmlValue());
-        parseCbrTxConfig(par("txConfig").xmlValue());
-        parseRriConfig(par("txConfig").xmlValue());
-        restrictResourceReservationPeriod = validResourceReservationIntervals_.at(0);
-        resourceReselectionCounter_ = par("resourceReselectionCounter");
-        subchannelSize_ = par("subchannelSize");
-        numSubchannels_ = par("numSubchannels");
-        probResourceKeep_ = par("probResourceKeep");
-        usePreconfiguredTxParams_ = par("usePreconfiguredTxParams");
-        reselectAfter_ = par("reselectAfter");
-        useCBR_ = par("useCBR");
-        packetDropping_ = par("packetDropping");
-        maximumCapacity_ = 0;
-        cbr_=0;
-        currentCw_=0;
-        missedTransmissions_=0;
-        expiredGrant_ = false;
+	if (stage == inet::INITSTAGE_LOCAL)
+	{
+		EV<<"SidelinkConfiguration::initialize, stage: "<<stage<<endl;
+		parseUeTxConfig(par("txConfig").xmlValue());
+		parseCbrTxConfig(par("txConfig").xmlValue());
+		parseRriConfig(par("txConfig").xmlValue());
+		restrictResourceReservationPeriod = validResourceReservationIntervals_.at(0);
+		resourceReselectionCounter_ = par("resourceReselectionCounter");
+		subchannelSize_ = par("subchannelSize");
+		numSubchannels_ = par("numSubchannels");
+		probResourceKeep_ = par("probResourceKeep");
+		usePreconfiguredTxParams_ = par("usePreconfiguredTxParams");
+		reselectAfter_ = par("reselectAfter");
+		useCBR_ = par("useCBR");
+		packetDropping_ = par("packetDropping");
+		maximumCapacity_ = 0;
+		cbr_=0;
+		currentCw_=0;
+		missedTransmissions_=0;
+		expiredGrant_ = false;
 
-        // Register the necessary signals for this simulation
-        grantStartTime          = registerSignal("grantStartTime");
-        grantBreak              = registerSignal("grantBreak");
-        grantBreakTiming        = registerSignal("grantBreakTiming");
-        grantBreakSize          = registerSignal("grantBreakSize");
-        droppedTimeout          = registerSignal("droppedTimeout");
-        grantBreakMissedTrans   = registerSignal("grantBreakMissedTrans");
-        missedTransmission      = registerSignal("missedTransmission");
-        selectedMCS             = registerSignal("selectedMCS");
-        selectedSubchannelIndex = registerSignal("selectedSubchannelIndex");
-        selectedNumSubchannels  = registerSignal("selectedNumSubchannels");
-        maximumCapacity         = registerSignal("maximumCapacity");
-        grantRequest            = registerSignal("grantRequest");
-        packetDropDCC           = registerSignal("packetDropDCC");
-        macNodeID               = registerSignal("macNodeID");
-        dataSize                = registerSignal("dataPDUSizeTransmitted");
+		// Register the necessary signals for this simulation
+		grantStartTime          = registerSignal("grantStartTime");
+		grantBreak              = registerSignal("grantBreak");
+		grantBreakTiming        = registerSignal("grantBreakTiming");
+		grantBreakSize          = registerSignal("grantBreakSize");
+		droppedTimeout          = registerSignal("droppedTimeout");
+		grantBreakMissedTrans   = registerSignal("grantBreakMissedTrans");
+		missedTransmission      = registerSignal("missedTransmission");
+		selectedMCS             = registerSignal("selectedMCS");
+		selectedSubchannelIndex = registerSignal("selectedSubchannelIndex");
+		selectedNumSubchannels  = registerSignal("selectedNumSubchannels");
+		maximumCapacity         = registerSignal("maximumCapacity");
+		grantRequest            = registerSignal("grantRequest");
+		packetDropDCC           = registerSignal("packetDropDCC");
+		macNodeID               = registerSignal("macNodeID");
+		dataSize                = registerSignal("dataPDUSizeTransmitted");
 
-    }
-    else if (stage == inet::INITSTAGE_NETWORK_LAYER)
-    {
-        deployer_ = getCellInfo(nodeId_);
-        numAntennas_ = getNumAntennas();
-        mcsScaleD2D_ = deployer_->getMcsScaleUl();
-        d2dMcsTable_.rescale(mcsScaleD2D_);
+	}
+	else if (stage == inet::INITSTAGE_NETWORK_LAYER)
+	{
+		deployer_ = getCellInfo(nodeId_);
+		numAntennas_ = getNumAntennas();
+		mcsScaleD2D_ = deployer_->getMcsScaleUl();
+		d2dMcsTable_.rescale(mcsScaleD2D_);
 
-        if (usePreconfiguredTxParams_)
-        {
-            preconfiguredTxParams_ = getPreconfiguredTxParams();
-        }
+		if (usePreconfiguredTxParams_)
+		{
+			preconfiguredTxParams_ = getPreconfiguredTxParams();
+		}
 
-        // LTE UE Section
-        nodeId_ = getAncestorPar("macNodeId");
+		// LTE UE Section
+		nodeId_ = getAncestorPar("macNodeId");
 
-        //emit(macNodeID, nodeId_);
+		//emit(macNodeID, nodeId_);
 
-        /* Insert UeInfo in the Binder */
-        ueInfo_ = new UeInfo();
-        ueInfo_->id = nodeId_;            // local mac ID
-        ueInfo_->cellId = cellId_;        // cell ID
-        ueInfo_->init = false;            // flag for phy initialization
-        ueInfo_->ue = this->getParentModule()->getParentModule();  // reference to the UE module
+		/* Insert UeInfo in the Binder */
+		ueInfo_ = new UeInfo();
+		ueInfo_->id = nodeId_;            // local mac ID
+		ueInfo_->cellId = cellId_;        // cell ID
+		ueInfo_->init = false;            // flag for phy initialization
+		ueInfo_->ue = this->getParentModule()->getParentModule();  // reference to the UE module
 
-        // Get the Physical Channel reference of the node
-        ueInfo_->phy = check_and_cast<LtePhyBase*>(ueInfo_->ue->getSubmodule("lteNic")->getSubmodule("phy"));
+		// Get the Physical Channel reference of the node
+		ueInfo_->phy = check_and_cast<LtePhyBase*>(ueInfo_->ue->getSubmodule("lteNic")->getSubmodule("phy"));
 
-        // binder_->addUeInfo(ueInfo_);
-    }
+		// binder_->addUeInfo(ueInfo_);
+	}
 }
 
 void SidelinkConfiguration::parseUeTxConfig(cXMLElement* xmlConfig)
 {
-    if (xmlConfig == 0)
-        throw cRuntimeError("No sidelink configuration file specified");
+	if (xmlConfig == 0)
+		throw cRuntimeError("No sidelink configuration file specified");
 
-    // Get channel Model field which contains parameters fields
-    cXMLElementList ueTxConfig = xmlConfig->getElementsByTagName("userEquipment-txParameters");
+	// Get channel Model field which contains parameters fields
+	cXMLElementList ueTxConfig = xmlConfig->getElementsByTagName("userEquipment-txParameters");
 
-    if (ueTxConfig.empty())
-        throw cRuntimeError("No userEquipment-txParameters configuration found in configuration file");
+	if (ueTxConfig.empty())
+		throw cRuntimeError("No userEquipment-txParameters configuration found in configuration file");
 
-    if (ueTxConfig.size() > 1)
-        throw cRuntimeError("More than one userEquipment-txParameters configuration found in configuration file.");
+	if (ueTxConfig.size() > 1)
+		throw cRuntimeError("More than one userEquipment-txParameters configuration found in configuration file.");
 
-    cXMLElement* ueTxConfigData = ueTxConfig.front();
+	cXMLElement* ueTxConfigData = ueTxConfig.front();
 
-    ParameterMap params;
-    getParametersFromXML(ueTxConfigData, params);
+	ParameterMap params;
+	getParametersFromXML(ueTxConfigData, params);
 
-    //get lambda max threshold
-    ParameterMap::iterator it = params.find("minMCS-PSSCH");
-    if (it != params.end())
-    {
-        EV<<"Parsing minMCS-PSSCH SidelinkConfiguration::parseUeTxConfig"<<endl;
-        minMCSPSSCH_ = (int)it->second;
-    }
-    else
-        minMCSPSSCH_ = (int)par("minMCSPSSCH");
-    it = params.find("maxMCS-PSSCH");
-    if (it != params.end())
-    {
-        maxMCSPSSCH_ = (int)it->second;
-    }
-    else
-        maxMCSPSSCH_ = (int)par("minMCSPSSCH");
-    it = params.find("minSubchannel-NumberPSSCH");
-    if (it != params.end())
-    {
-        minSubchannelNumberPSSCH_ = (int)it->second;
-    }
-    else
-        minSubchannelNumberPSSCH_ = (int)par("minSubchannelNumberPSSCH");
-    it = params.find("maxSubchannel-NumberPSSCH");
-    if (it != params.end())
-    {
-        maxSubchannelNumberPSSCH_ = (int)it->second;
-    }
-    else
-        maxSubchannelNumberPSSCH_ = (int)par("maxSubchannelNumberPSSCH");
-    it = params.find("allowedRetxNumberPSSCH");
-    if (it != params.end())
-    {
-        allowedRetxNumberPSSCH_ = (int)it->second;
-    }
-    else
-        allowedRetxNumberPSSCH_ = (int)par("allowedRetxNumberPSSCH");
+	//get lambda max threshold
+	ParameterMap::iterator it = params.find("minMCS-PSSCH");
+	if (it != params.end())
+	{
+		EV<<"Parsing minMCS-PSSCH SidelinkConfiguration::parseUeTxConfig"<<endl;
+		minMCSPSSCH_ = (int)it->second;
+	}
+	else
+		minMCSPSSCH_ = (int)par("minMCSPSSCH");
+	it = params.find("maxMCS-PSSCH");
+	if (it != params.end())
+	{
+		maxMCSPSSCH_ = (int)it->second;
+	}
+	else
+		maxMCSPSSCH_ = (int)par("minMCSPSSCH");
+	it = params.find("minSubchannel-NumberPSSCH");
+	if (it != params.end())
+	{
+		minSubchannelNumberPSSCH_ = (int)it->second;
+	}
+	else
+		minSubchannelNumberPSSCH_ = (int)par("minSubchannelNumberPSSCH");
+	it = params.find("maxSubchannel-NumberPSSCH");
+	if (it != params.end())
+	{
+		maxSubchannelNumberPSSCH_ = (int)it->second;
+	}
+	else
+		maxSubchannelNumberPSSCH_ = (int)par("maxSubchannelNumberPSSCH");
+	it = params.find("allowedRetxNumberPSSCH");
+	if (it != params.end())
+	{
+		allowedRetxNumberPSSCH_ = (int)it->second;
+	}
+	else
+		allowedRetxNumberPSSCH_ = (int)par("allowedRetxNumberPSSCH");
 }
 
 void SidelinkConfiguration::parseCbrTxConfig(cXMLElement* xmlConfig)
 {
 
-    if (xmlConfig == 0)
-        throw cRuntimeError("No cbr configuration specified");
+	if (xmlConfig == 0)
+		throw cRuntimeError("No cbr configuration specified");
 
-    // Get channel Model field which contains parameters fields
-    cXMLElementList cbrTxConfig = xmlConfig->getElementsByTagName("Sl-CBR-CommonTxConfigList");
+	// Get channel Model field which contains parameters fields
+	cXMLElementList cbrTxConfig = xmlConfig->getElementsByTagName("Sl-CBR-CommonTxConfigList");
 
-    if (cbrTxConfig.empty())
-        throw cRuntimeError("No Sl-CBR-CommonTxConfigList found in configuration file");
+	if (cbrTxConfig.empty())
+		throw cRuntimeError("No Sl-CBR-CommonTxConfigList found in configuration file");
 
-    cXMLElement* cbrTxConfigData = cbrTxConfig.front();
+	cXMLElement* cbrTxConfigData = cbrTxConfig.front();
 
-    ParameterMap params;
-    getParametersFromXML(cbrTxConfigData, params);
+	ParameterMap params;
+	getParametersFromXML(cbrTxConfigData, params);
 
-    //get lambda max threshold
-    ParameterMap::iterator it = params.find("default-cbr-ConfigIndex");
-    if (it != params.end())
-    {
-        defaultCbrIndex_ = it->second;
-        currentCbrIndex_ = defaultCbrIndex_;
-    }
+	//get lambda max threshold
+	ParameterMap::iterator it = params.find("default-cbr-ConfigIndex");
+	if (it != params.end())
+	{
+		defaultCbrIndex_ = it->second;
+		currentCbrIndex_ = defaultCbrIndex_;
+	}
 
-    cXMLElementList cbrLevelConfigs = xmlConfig->getElementsByTagName("cbr-ConfigIndex");
+	cXMLElementList cbrLevelConfigs = xmlConfig->getElementsByTagName("cbr-ConfigIndex");
 
-    if (cbrLevelConfigs.empty())
-        throw cRuntimeError("No cbr-Levels-Config found in configuration file");
+	if (cbrLevelConfigs.empty())
+		throw cRuntimeError("No cbr-Levels-Config found in configuration file");
 
-    cXMLElementList::iterator xmlIt;
-    for(xmlIt = cbrLevelConfigs.begin(); xmlIt != cbrLevelConfigs.end(); xmlIt++)
-    {
-        std::unordered_map<std::string, double> cbrLevelsMap;
-        ParameterMap cbrLevelsParams;
-        getParametersFromXML((*xmlIt), cbrLevelsParams);
-        it = cbrLevelsParams.find("cbr-lower");
-        if (it != cbrLevelsParams.end())
-        {
-            cbrLevelsMap.insert(std::pair<std::string, double>("cbr-lower",  it->second));
-        }
-        it = cbrLevelsParams.find("cbr-upper");
-        if (it != cbrLevelsParams.end())
-        {
-            cbrLevelsMap.insert(std::pair<std::string, double>("cbr-upper",  it->second));
-        }
-        it = cbrLevelsParams.find("cbr-PSSCH-TxConfig-Index");
-        if (it != cbrLevelsParams.end())
-        {
-            cbrLevelsMap.insert(std::pair<std::string, double>("cbr-PSSCH-TxConfig-Index",  it->second));
-        }
-        cbrLevels_.push_back(cbrLevelsMap);
-    }
+	cXMLElementList::iterator xmlIt;
+	for(xmlIt = cbrLevelConfigs.begin(); xmlIt != cbrLevelConfigs.end(); xmlIt++)
+	{
+		std::unordered_map<std::string, double> cbrLevelsMap;
+		ParameterMap cbrLevelsParams;
+		getParametersFromXML((*xmlIt), cbrLevelsParams);
+		it = cbrLevelsParams.find("cbr-lower");
+		if (it != cbrLevelsParams.end())
+		{
+			cbrLevelsMap.insert(std::pair<std::string, double>("cbr-lower",  it->second));
+		}
+		it = cbrLevelsParams.find("cbr-upper");
+		if (it != cbrLevelsParams.end())
+		{
+			cbrLevelsMap.insert(std::pair<std::string, double>("cbr-upper",  it->second));
+		}
+		it = cbrLevelsParams.find("cbr-PSSCH-TxConfig-Index");
+		if (it != cbrLevelsParams.end())
+		{
+			cbrLevelsMap.insert(std::pair<std::string, double>("cbr-PSSCH-TxConfig-Index",  it->second));
+		}
+		cbrLevels_.push_back(cbrLevelsMap);
+	}
 
-    cXMLElementList cbrTxConfigs = xmlConfig->getElementsByTagName("cbr-PSSCH-TxConfig");
+	cXMLElementList cbrTxConfigs = xmlConfig->getElementsByTagName("cbr-PSSCH-TxConfig");
 
-    if (cbrTxConfigs.empty())
-        throw cRuntimeError("No CBR-TxConfig found in configuration file");
+	if (cbrTxConfigs.empty())
+		throw cRuntimeError("No CBR-TxConfig found in configuration file");
 
-    cXMLElementList cbrTxParams = xmlConfig->getElementsByTagName("txParameters");
+	cXMLElementList cbrTxParams = xmlConfig->getElementsByTagName("txParameters");
 
-    for(xmlIt = cbrTxParams.begin(); xmlIt != cbrTxParams.end(); xmlIt++)
-    {
-        std::unordered_map<std::string, double> cbrMap;
-        ParameterMap cbrParams;
-        getParametersFromXML((*xmlIt), cbrParams);
-        it = cbrParams.find("minMCS-PSSCH");
-        if (it != cbrParams.end())
-        {
-            cbrMap.insert({"minMCS-PSSCH",  it->second});
-        }
-        else
-            cbrMap.insert({"minMCS-PSSCH",  par("minMCSPSSCH")});
-        it = cbrParams.find("maxMCS-PSSCH");
-        if (it != cbrParams.end())
-        {
-            cbrMap.insert({"maxMCS-PSSCH",  it->second});
-        }
-        else
-            cbrMap.insert({"maxMCS-PSSCH",  par("maxMCSPSSCH")});
-        it = cbrParams.find("minSubchannel-NumberPSSCH");
-        if (it != cbrParams.end())
-        {
-            cbrMap.insert({"minSubchannel-NumberPSSCH",  it->second});
-        }
-        else
-            cbrMap.insert({"minSubchannel-NumberPSSCH",  par("minSubchannelNumberPSSCH")});
-        it = cbrParams.find("maxSubchannel-NumberPSSCH");
-        if (it != cbrParams.end())
-        {
-            cbrMap.insert({"maxSubchannel-NumberPSSCH",  it->second});
-        }
-        else
-            cbrMap.insert({"maxSubchannel-NumberPSSCH",  par("maxSubchannelNumberPSSCH")});
-        it = cbrParams.find("allowedRetxNumberPSSCH");
-        if (it != cbrParams.end())
-        {
-            cbrMap.insert({"allowedRetxNumberPSSCH",  it->second});
-        }
-        else
-            cbrMap.insert({"allowedRetxNumberPSSCH",  par("allowedRetxNumberPSSCH")});
-        it = cbrParams.find("cr-Limit");
-        if (it != cbrParams.end())
-        {
-            cbrMap.insert({"cr-Limit",  it->second});
-        }
+	for(xmlIt = cbrTxParams.begin(); xmlIt != cbrTxParams.end(); xmlIt++)
+	{
+		std::unordered_map<std::string, double> cbrMap;
+		ParameterMap cbrParams;
+		getParametersFromXML((*xmlIt), cbrParams);
+		it = cbrParams.find("minMCS-PSSCH");
+		if (it != cbrParams.end())
+		{
+			cbrMap.insert({"minMCS-PSSCH",  it->second});
+		}
+		else
+			cbrMap.insert({"minMCS-PSSCH",  par("minMCSPSSCH")});
+		it = cbrParams.find("maxMCS-PSSCH");
+		if (it != cbrParams.end())
+		{
+			cbrMap.insert({"maxMCS-PSSCH",  it->second});
+		}
+		else
+			cbrMap.insert({"maxMCS-PSSCH",  par("maxMCSPSSCH")});
+		it = cbrParams.find("minSubchannel-NumberPSSCH");
+		if (it != cbrParams.end())
+		{
+			cbrMap.insert({"minSubchannel-NumberPSSCH",  it->second});
+		}
+		else
+			cbrMap.insert({"minSubchannel-NumberPSSCH",  par("minSubchannelNumberPSSCH")});
+		it = cbrParams.find("maxSubchannel-NumberPSSCH");
+		if (it != cbrParams.end())
+		{
+			cbrMap.insert({"maxSubchannel-NumberPSSCH",  it->second});
+		}
+		else
+			cbrMap.insert({"maxSubchannel-NumberPSSCH",  par("maxSubchannelNumberPSSCH")});
+		it = cbrParams.find("allowedRetxNumberPSSCH");
+		if (it != cbrParams.end())
+		{
+			cbrMap.insert({"allowedRetxNumberPSSCH",  it->second});
+		}
+		else
+			cbrMap.insert({"allowedRetxNumberPSSCH",  par("allowedRetxNumberPSSCH")});
+		it = cbrParams.find("cr-Limit");
+		if (it != cbrParams.end())
+		{
+			cbrMap.insert({"cr-Limit",  it->second});
+		}
 
-        cbrPSSCHTxConfigList_.push_back(cbrMap);
-        EV<<"Parsing CBR"<<cbrPSSCHTxConfigList_.size()<<endl;
-    }
+		cbrPSSCHTxConfigList_.push_back(cbrMap);
+		EV<<"Parsing CBR"<<cbrPSSCHTxConfigList_.size()<<endl;
+	}
 }
 
 void SidelinkConfiguration::parseRriConfig(cXMLElement* xmlConfig)
 {
-    if (xmlConfig == 0)
-        throw cRuntimeError("No cbr configuration specified");
+	if (xmlConfig == 0)
+		throw cRuntimeError("No cbr configuration specified");
 
-    // Get channel Model field which contains parameters fields
-    cXMLElementList rriConfig = xmlConfig->getElementsByTagName("RestrictResourceReservationPeriodList");
+	// Get channel Model field which contains parameters fields
+	cXMLElementList rriConfig = xmlConfig->getElementsByTagName("RestrictResourceReservationPeriodList");
 
-    if (rriConfig.empty())
-        throw cRuntimeError("No RestrictResourceReservationPeriodList found in configuration file");
+	if (rriConfig.empty())
+		throw cRuntimeError("No RestrictResourceReservationPeriodList found in configuration file");
 
-    cXMLElementList rriConfigs = xmlConfig->getElementsByTagName("RestrictResourceReservationPeriod");
+	cXMLElementList rriConfigs = xmlConfig->getElementsByTagName("RestrictResourceReservationPeriod");
 
-    if (rriConfigs.empty())
-        throw cRuntimeError("No RestrictResourceReservationPeriods found in configuration file");
+	if (rriConfigs.empty())
+		throw cRuntimeError("No RestrictResourceReservationPeriods found in configuration file");
 
-    cXMLElementList::iterator xmlIt;
-    for(xmlIt = rriConfigs.begin(); xmlIt != rriConfigs.end(); xmlIt++)
-    {
-        ParameterMap rriParams;
-        getParametersFromXML((*xmlIt), rriParams);
-        ParameterMap::iterator it = rriParams.find("rri");
-        if (it != rriParams.end())
-        {
-            validResourceReservationIntervals_.push_back(it->second);
-        }
-    }
+	cXMLElementList::iterator xmlIt;
+	for(xmlIt = rriConfigs.begin(); xmlIt != rriConfigs.end(); xmlIt++)
+	{
+		ParameterMap rriParams;
+		getParametersFromXML((*xmlIt), rriParams);
+		ParameterMap::iterator it = rriParams.find("rri");
+		if (it != rriParams.end())
+		{
+			validResourceReservationIntervals_.push_back(it->second);
+		}
+	}
 }
 
 int SidelinkConfiguration::getNumAntennas()
 {
-    /* Get number of antennas: +1 is for MACRO */
-    return deployer_->getNumRus() + 1;
+	/* Get number of antennas: +1 is for MACRO */
+	return deployer_->getNumRus() + 1;
 }
 
 void SidelinkConfiguration::macPduMake()
@@ -338,209 +339,215 @@ void SidelinkConfiguration::macPduMake()
 
 UserTxParams* SidelinkConfiguration::getPreconfiguredTxParams()
 {
-    UserTxParams* txParams = new UserTxParams();
+	UserTxParams* txParams = new UserTxParams();
 
-    // default parameters for D2D
-    txParams->isSet() = true;
-    txParams->writeTxMode(SINGLE_ANTENNA_PORT0);
-    Rank ri = 1;                                              // rank for TxD is one
-    txParams->writeRank(ri);
-    txParams->writePmi(intuniform(1, pow(ri, (double) 2)));   // taken from LteFeedbackComputationRealistic::computeFeedback
+	// default parameters for D2D
+	txParams->isSet() = true;
+	txParams->writeTxMode(SINGLE_ANTENNA_PORT0);
+	Rank ri = 1;                                              // rank for TxD is one
+	txParams->writeRank(ri);
+	txParams->writePmi(intuniform(1, pow(ri, (double) 2)));   // taken from LteFeedbackComputationRealistic::computeFeedback
 
-    BandSet b;
-    for (Band i = 0; i < deployer_->getNumBands(); ++i) b.insert(i);
-    txParams->writeBands(b);
+	BandSet b;
+	for (Band i = 0; i < deployer_->getNumBands(); ++i) b.insert(i);
+	txParams->writeBands(b);
 
-    RemoteSet antennas;
-    antennas.insert(MACRO);
-    txParams->writeAntennas(antennas);
+	RemoteSet antennas;
+	antennas.insert(MACRO);
+	txParams->writeAntennas(antennas);
 
-    return txParams;
+	return txParams;
 }
 
 void SidelinkConfiguration::handleMessage(cMessage *msg)
 {
-    if (msg->isSelfMessage())
-    {
-        //LteMacUeD2D::handleMessage(msg);
-        return;
-    }
+	if (msg->isSelfMessage())
+	{
+		//LteMacUeD2D::handleMessage(msg);
+		return;
+	}
 
 
-    cPacket* pkt = check_and_cast<cPacket *>(msg);
-    cGate* incoming = pkt->getArrivalGate();
+	Packet* pkt = check_and_cast<Packet*>(msg);
+	cGate* incoming = pkt->getArrivalGate();
 
 
-    if (strcmp(pkt->getName(), "CBR") == 0)
-    {
-        EV<<"REceived CBR message from gate: "<<incoming<<endl;
+	if (strcmp(pkt->getName(), "CBR") == 0)
+	{
+		EV<<"REceived CBR message from gate: "<<incoming<<endl;
 
-        Cbr* cbrPkt = check_and_cast<Cbr*>(pkt);
-        cbr_ = cbrPkt->getCbr();
+		Cbr* cbrPkt = check_and_cast<Cbr*>(pkt);
+		cbr_ = cbrPkt->getCbr();
 
-        currentCbrIndex_ = defaultCbrIndex_;
-        if (useCBR_)
-        {
-            std::vector<std::unordered_map<std::string, double>>::iterator it;
-            for (it = cbrLevels_.begin(); it!=cbrLevels_.end(); it++)
-            {
-                double cbrUpper = (*it).at("cbr-upper");
-                double cbrLower = (*it).at("cbr-lower");
-                double index = (*it).at("cbr-PSSCH-TxConfig-Index");
-                if (cbrLower == 0){
-                    if (cbr_< cbrUpper)
-                    {
-                        currentCbrIndex_ = (int)index;
-                        break;
-                    }
-                } else if (cbrUpper == 1){
-                    if (cbr_ > cbrLower)
-                    {
-                        currentCbrIndex_ = (int)index;
-                        break;
-                    }
-                } else {
-                    if (cbr_ > cbrLower && cbr_<= cbrUpper)
-                    {
-                        currentCbrIndex_ = (int)index;
-                        break;
-                    }
-                }
-            }
-        }
+		currentCbrIndex_ = defaultCbrIndex_;
+		if (useCBR_)
+		{
+			std::vector<std::unordered_map<std::string, double>>::iterator it;
+			for (it = cbrLevels_.begin(); it!=cbrLevels_.end(); it++)
+			{
+				double cbrUpper = (*it).at("cbr-upper");
+				double cbrLower = (*it).at("cbr-lower");
+				double index = (*it).at("cbr-PSSCH-TxConfig-Index");
+				if (cbrLower == 0){
+					if (cbr_< cbrUpper)
+					{
+						currentCbrIndex_ = (int)index;
+						break;
+					}
+				} else if (cbrUpper == 1){
+					if (cbr_ > cbrLower)
+					{
+						currentCbrIndex_ = (int)index;
+						break;
+					}
+				} else {
+					if (cbr_ > cbrLower && cbr_<= cbrUpper)
+					{
+						currentCbrIndex_ = (int)index;
+						break;
+					}
+				}
+			}
+		}
 
-        int b;
-        int a;
-        int subchannelsUsed = 0;
-        // CR limit calculation
-        // determine b
-        if (schedulingGrant_ != NULL){
-            if (expirationCounter_ > 499){
-                b = 499;
-            } else {
-                b = expirationCounter_;
-            }
-            subchannelsUsed += b / schedulingGrant_->getPeriod();
-        } else {
-            b = 0;
-        }
-        // determine a
-        a = 999 - b;
+		int b;
+		int a;
+		int subchannelsUsed = 0;
+		// CR limit calculation
+		// determine b
+		if (schedulingGrant_ != NULL){
+			if (expirationCounter_ > 499){
+				b = 499;
+			} else {
+				b = expirationCounter_;
+			}
+			subchannelsUsed += b / schedulingGrant_->getPeriod();
+		} else {
+			b = 0;
+		}
+		// determine a
+		a = 999 - b;
 
-        // determine previous transmissions -> Need to account for if we have already done a drop. Must maintain a
-        // history of past transmissions i.e. subchannels used and subframe in which they occur. delete entries older
-        // than 1000.
+		// determine previous transmissions -> Need to account for if we have already done a drop. Must maintain a
+		// history of past transmissions i.e. subchannels used and subframe in which they occur. delete entries older
+		// than 1000.
 
-        std::unordered_map<double, int>::const_iterator it = previousTransmissions_.begin();
-        while (it != previousTransmissions_.end()){
-            if (it->first < NOW.dbl() - 1){
-                it = previousTransmissions_.erase(it);
-            } else if (it->first > NOW.dbl() - (0.1 * a)) {
-                subchannelsUsed += it->second;
-                it++;
-            }
-        }
+		std::unordered_map<double, int>::const_iterator it = previousTransmissions_.begin();
+		while (it != previousTransmissions_.end()){
+			if (it->first < NOW.dbl() - 1){
+				it = previousTransmissions_.erase(it);
+			} else if (it->first > NOW.dbl() - (0.1 * a)) {
+				subchannelsUsed += it->second;
+				it++;
+			}
+		}
 
-        // calculate cr
-        channelOccupancyRatio_ = subchannelsUsed /(numSubchannels_ * 1000.0);
-        EV<<"channelOccupancyRatio_: "<<channelOccupancyRatio_<<endl;
-        // message from PHY_to_MAC gate (from lower layer)
-        //emit(receivedPacketFromLowerLayer, pkt);
-        throw cRuntimeError("SLConfig CBR");
-        LteMacBase* mac = dynamic_cast<LteMacBase*>(getParentModule()->getSubmodule("mac"));
-        mac->sendUpperPackets(cbrPkt);
+		// calculate cr
+		channelOccupancyRatio_ = subchannelsUsed /(numSubchannels_ * 1000.0);
+		EV<<"channelOccupancyRatio_: "<<channelOccupancyRatio_<<endl;
+		// message from PHY_to_MAC gate (from lower layer)
+		//emit(receivedPacketFromLowerLayer, pkt);
+		throw cRuntimeError("SLConfig CBR");
+		LteMacBase* mac = dynamic_cast<LteMacBase*>(getParentModule()->getSubmodule("mac"));
+		mac->sendUpperPackets(cbrPkt);
 
-        return;
-    }
+		return;
+	}
 
-    if (msg->isName("newDataPkt"))
-    {
-        LteMacBase* mac = dynamic_cast<LteMacBase*>(getParentModule()->getSubmodule("mac"));
+	if (msg->isName("LtePdcpPdu"))
+	{
+		LteMacBase* mac = dynamic_cast<LteMacBase*>(getParentModule()->getSubmodule("mac"));
 
-        if (mac->getIpBased()==false)
-        {
-            FlowControlInfoNonIp* lteInfo = check_and_cast<FlowControlInfoNonIp*>(pkt->removeControlInfo());
-            lteInfo->setIpBased(false);
+		if (mac->getIpBased()==false)
+		{
+			auto lteInfo = pkt->getTagForUpdate<FlowControlInfo>();
+			lteInfo->setIpBased(false);
 
-            receivedTime_ = NOW;
-            simtime_t elapsedTime = receivedTime_ - lteInfo->getCreationTime();
-            simtime_t duration = SimTime(lteInfo->getDuration(), SIMTIME_MS);
-            duration = duration - elapsedTime;
-            double dur = duration.dbl();
-            remainingTime_ = lteInfo->getDuration() - dur;
+			receivedTime_ = NOW;
+			simtime_t elapsedTime = receivedTime_ - lteInfo->getCreationTime();
+			simtime_t duration = SimTime(lteInfo->getDuration(), SIMTIME_MS);
+			duration = duration - elapsedTime;
+			double dur = duration.dbl();
+			remainingTime_ = lteInfo->getDuration() - dur;
 
-            if (schedulingGrant_ != NULL && periodCounter_ > remainingTime_)
-            {
-                //emit(grantBreakTiming, 1);
-                //delete schedulingGrant_;
-                //schedulingGrant_ = NULL;
-                mode4Grant=   macGenerateSchedulingGrant(remainingTime_, lteInfo->getPriority(), pkt->getBitLength());
-            }
-            else if (schedulingGrant_ == NULL)
-            {
-                mode4Grant= macGenerateSchedulingGrant(remainingTime_, lteInfo->getPriority(), pkt->getBitLength());
+			if (schedulingGrant_ != NULL && periodCounter_ > remainingTime_)
+			{
+				//emit(grantBreakTiming, 1);
+				//delete schedulingGrant_;
+				//schedulingGrant_ = NULL;
+				mode4Grant=   macGenerateSchedulingGrant(remainingTime_, lteInfo->getPriority(), pkt->getBitLength());
+			}
+			else if (schedulingGrant_ == NULL)
+			{
+				EV<<"Test handleMessage"<<endl;
+				mode4Grant= macGenerateSchedulingGrant(remainingTime_, lteInfo->getPriority(), pkt->getBitLength());
 
-            }
-            else
-            {
-                LteSidelinkGrant* mode4Grant = check_and_cast<LteSidelinkGrant*>(schedulingGrant_);
-                mode4Grant->setSpsPriority(lteInfo->getPriority());
-                // Need to get the creation time for this
-                mode4Grant->setMaximumLatency(remainingTime_);
-            }
-            // Need to set the size of our grant to the correct size we need to ask rlc for, i.e. for the sdu size.
-            mode4Grant->setGrantedCwBytes((MAX_CODEWORDS - currentCw_), pkt->getBitLength());
-            mode4Grant->setPacketId(mac->getPacketId());
-            mode4Grant->setCamId(mac->getCAMId());
-            EV<<"Mode4Grant CAM Id: "<<mac->getCAMId()<<endl;
-            slGrant = mode4Grant;
-            setSidelinkGrant(slGrant);
-            pkt->setControlInfo(lteInfo);
-        }
+			}
+			else
+			{
+				auto  mode4Grant = makeShared<LteSidelinkGrant>();
+				mode4Grant->setSpsPriority(lteInfo->getPriority());
+				// Need to get the creation time for this
+				mode4Grant->setMaximumLatency(remainingTime_);
+			}
+
+			// Need to set the size of our grant to the correct size we need to ask rlc for, i.e. for the sdu size.
+			mode4Grant->setGrantedCwBytes((MAX_CODEWORDS - currentCw_), pkt->getBitLength());
+			mode4Grant->setPacketId(mac->getPacketId());
+			mode4Grant->setCamId(mac->getCAMId());
+			EV<<"Mode4Grant CAM Id: "<<mac->getCAMId()<<endl;
+
+			setSidelinkGrant(mode4Grant);
+			pkt->addTagIfAbsent<FlowControlInfo>();
+			auto  grant = makeShared<LteSidelinkGrant>();
+			pkt->insertAtFront(grant);
+			//throw cRuntimeError("Sidelink configuration");
+			//pkt->setControlInfo(lteInfo);
+		}
 
 
 
 
-        if (mac->getIpBased()==true)
-        {
-            FlowControlInfo*  lteInfo = check_and_cast<FlowControlInfo*>(pkt->removeControlInfo());
-            lteInfo->setIpBased(true);
+		if (mac->getIpBased()==true)
+		{
+			FlowControlInfo*  lteInfo = check_and_cast<FlowControlInfo*>(pkt->removeControlInfo());
+			lteInfo->setIpBased(true);
 
-            receivedTime_ = NOW;
-            simtime_t elapsedTime = receivedTime_ - lteInfo->getCreationTime();
-            simtime_t duration = SimTime(lteInfo->getDuration(), SIMTIME_MS);
-            duration = duration - elapsedTime;
-            double dur = duration.dbl();
-            remainingTime_ = lteInfo->getDuration() - dur;
+			receivedTime_ = NOW;
+			simtime_t elapsedTime = receivedTime_ - lteInfo->getCreationTime();
+			simtime_t duration = SimTime(lteInfo->getDuration(), SIMTIME_MS);
+			duration = duration - elapsedTime;
+			double dur = duration.dbl();
+			remainingTime_ = lteInfo->getDuration() - dur;
 
-            if (schedulingGrant_ != NULL && periodCounter_ > remainingTime_)
-            {
-                //emit(grantBreakTiming, 1);
-                //delete schedulingGrant_;
-                //schedulingGrant_ = NULL;
-                mode4Grant=   macGenerateSchedulingGrant(remainingTime_, lteInfo->getPriority(), pkt->getBitLength());
-            }
-            else if (schedulingGrant_ == NULL)
-            {
-                mode4Grant= macGenerateSchedulingGrant(remainingTime_, lteInfo->getPriority(), pkt->getBitLength());
+			if (schedulingGrant_ != NULL && periodCounter_ > remainingTime_)
+			{
+				//emit(grantBreakTiming, 1);
+				//delete schedulingGrant_;
+				//schedulingGrant_ = NULL;
+				mode4Grant=   macGenerateSchedulingGrant(remainingTime_, lteInfo->getPriority(), pkt->getBitLength());
+			}
+			else if (schedulingGrant_ == NULL)
+			{
+				mode4Grant= macGenerateSchedulingGrant(remainingTime_, lteInfo->getPriority(), pkt->getBitLength());
 
-            }
-            else
-            {
-                LteSidelinkGrant* mode4Grant = check_and_cast<LteSidelinkGrant*>(schedulingGrant_);
-                mode4Grant->setSpsPriority(lteInfo->getPriority());
-                // Need to get the creation time for this
-                mode4Grant->setMaximumLatency(remainingTime_);
-            }
-            // Need to set the size of our grant to the correct size we need to ask rlc for, i.e. for the sdu size.
-            mode4Grant->setGrantedCwBytes((MAX_CODEWORDS - currentCw_), pkt->getBitLength());
-            mode4Grant->setPacketId(mac->getPacketId());
-            EV<<"Grant for packetId: "<<mode4Grant->getPacketId()<<endl;
-            slGrant = mode4Grant;
-            setSidelinkGrant(slGrant);
-            pkt->setControlInfo(lteInfo);
-        }
-    }
+			}
+			else
+			{
+				LteSidelinkGrant* mode4Grant = check_and_cast<LteSidelinkGrant*>(schedulingGrant_);
+				mode4Grant->setSpsPriority(lteInfo->getPriority());
+				// Need to get the creation time for this
+				mode4Grant->setMaximumLatency(remainingTime_);
+			}
+			// Need to set the size of our grant to the correct size we need to ask rlc for, i.e. for the sdu size.
+			mode4Grant->setGrantedCwBytes((MAX_CODEWORDS - currentCw_), pkt->getBitLength());
+			mode4Grant->setPacketId(mac->getPacketId());
+			EV<<"Grant for packetId: "<<mode4Grant->getPacketId()<<endl;
+			slGrant = mode4Grant;
+			setSidelinkGrant(slGrant);
+			pkt->setControlInfo(lteInfo);
+		}
+	}
 
 
 }
@@ -548,9 +555,9 @@ void SidelinkConfiguration::handleMessage(cMessage *msg)
 
 void SidelinkConfiguration::assignGrantToData(DataArrival* pkt, std::string rrcState)
 {
-    rrcCurrentState = rrcState;
-    LteMacBase* mac = dynamic_cast<LteMacBase*>(getParentModule()->getSubmodule("mac"));
-    /*
+	rrcCurrentState = rrcState;
+	LteMacBase* mac = dynamic_cast<LteMacBase*>(getParentModule()->getSubmodule("mac"));
+	/*
 
 
     if(rrcState=="RRC_IDLE")
@@ -594,55 +601,55 @@ void SidelinkConfiguration::assignGrantToData(DataArrival* pkt, std::string rrcS
 
         pkt->setControlInfo(lteInfo);
     }*/
-    if(rrcState=="RRC_CONN" || rrcState=="RRC_INACTIVE")
-    {
+	if(rrcState=="RRC_CONN" || rrcState=="RRC_INACTIVE")
+	{
 
-        UserControlInfo* lteInfo = check_and_cast< UserControlInfo*>(pkt->removeControlInfo());
-        receivedTime_ = NOW;
-        double elapsedTime = receivedTime_.dbl() - pkt->getCreationTime();
-        double duration = SimTime(pkt->getDuration(), SIMTIME_MS).dbl();
-        duration = duration - elapsedTime;
-        double dur = duration;
-        remainingTime_ = pkt->getDuration() - dur;
+		UserControlInfo* lteInfo = check_and_cast< UserControlInfo*>(pkt->removeControlInfo());
+		receivedTime_ = NOW;
+		double elapsedTime = receivedTime_.dbl() - pkt->getCreationTime();
+		double duration = SimTime(pkt->getDuration(), SIMTIME_MS).dbl();
+		duration = duration - elapsedTime;
+		double dur = duration;
+		remainingTime_ = pkt->getDuration() - dur;
 
-        EV<<"Remaining time: "<<remainingTime_<<endl;
-        EV<<"Priority: "<<pkt->getPriority()<<endl;
-        EV<<"bit length: "<<pkt->getDataSize()<<endl;
+		EV<<"Remaining time: "<<remainingTime_<<endl;
+		EV<<"Priority: "<<pkt->getPriority()<<endl;
+		EV<<"bit length: "<<pkt->getDataSize()<<endl;
 
-        if (schedulingGrant_ != NULL && periodCounter_ > remainingTime_)
-        {
+		if (schedulingGrant_ != NULL && periodCounter_ > remainingTime_)
+		{
 
-            //emit(grantBreakTiming, 1);
-            //delete schedulingGrant_;
-            //schedulingGrant_ = NULL;
-            mode3Grant=   macGenerateSchedulingGrant(remainingTime_, pkt->getPriority(), pkt->getDataSize());
-        }
-        else if (schedulingGrant_ == NULL)
-        {
+			//emit(grantBreakTiming, 1);
+			//delete schedulingGrant_;
+			//schedulingGrant_ = NULL;
+			mode3Grant=   macGenerateSchedulingGrant(remainingTime_, pkt->getPriority(), pkt->getDataSize());
+		}
+		else if (schedulingGrant_ == NULL)
+		{
 
-            mode3Grant= macGenerateSchedulingGrant(remainingTime_, pkt->getPriority(), pkt->getDataSize());
+			mode3Grant= macGenerateSchedulingGrant(remainingTime_, pkt->getPriority(), pkt->getDataSize());
 
-        }
-        else
-        {
+		}
+		else
+		{
 
-            LteSidelinkGrant* mode3Grant = check_and_cast<LteSidelinkGrant*>(schedulingGrant_);
-            mode3Grant->setSpsPriority(pkt->getPriority());
-            // Need to get the creation time for this
-            mode3Grant->setMaximumLatency(remainingTime_);
-        }
+			LteSidelinkGrant* mode3Grant = check_and_cast<LteSidelinkGrant*>(schedulingGrant_);
+			mode3Grant->setSpsPriority(pkt->getPriority());
+			// Need to get the creation time for this
+			mode3Grant->setMaximumLatency(remainingTime_);
+		}
 
-        // Need to set the size of our grant to the correct size we need to ask rlc for, i.e. for the sdu size.
-        mode3Grant->setGrantedCwBytes((MAX_CODEWORDS - currentCw_), pkt->getDataSize());
-        EV<<"Mode3Grant packetId: "<<lteInfo->getPktId();
-        mode3Grant->setCamId(lteInfo->getCAMId());
-        EV<<"Mode3Grant CAMId: "<<lteInfo->getCAMId();
-        //mode3Grant->setPacketId(lteInfo->getPktId());
-        slGrant = mode3Grant;
-        setSidelinkGrant(slGrant);
+		// Need to set the size of our grant to the correct size we need to ask rlc for, i.e. for the sdu size.
+		mode3Grant->setGrantedCwBytes((MAX_CODEWORDS - currentCw_), pkt->getDataSize());
+		EV<<"Mode3Grant packetId: "<<lteInfo->getPktId();
+		mode3Grant->setCamId(lteInfo->getCAMId());
+		EV<<"Mode3Grant CAMId: "<<lteInfo->getCAMId();
+		//mode3Grant->setPacketId(lteInfo->getPktId());
+		slGrant = mode3Grant;
+		setSidelinkGrant(slGrant);
 
-        pkt->setControlInfo(lteInfo);
-    }
+		pkt->setControlInfo(lteInfo);
+	}
 
 }
 
@@ -650,345 +657,358 @@ void SidelinkConfiguration::assignGrantToData(DataArrival* pkt, std::string rrcS
 
 void SidelinkConfiguration::handleSelfMessage()
 {
-    //integrated with LteMacUeD2D::handleSelfMessage();
+	//integrated with LteMacUeD2D::handleSelfMessage();
 }
 
-void SidelinkConfiguration::macHandleSps(std::vector<std::tuple<double, int, double>> CSRs, std::string rrcCurrentState)
+LteSidelinkGrant* SidelinkConfiguration::macHandleSps(std::vector<std::tuple<double, int, double>> CSRs, std::string rrcCurrentState, LteSidelinkGrant* grant)
 {
-    /* *   This is where we add the subchannels to the actual scheduling grant, so a few things
-     * 1. Need to ensure in the self message part that if at any point we have a scheduling grant without assigned subchannels, we have to wait
-     * 2. Need to pick at random from the SPS list of CSRs
-     * 3. Assign the CR
-     * 4. return
-     * */
+	/* *   This is where we add the subchannels to the actual scheduling grant, so a few things
+	 * 1. Need to ensure in the self message part that if at any point we have a scheduling grant without assigned subchannels, we have to wait
+	 * 2. Need to pick at random from the SPS list of CSRs
+	 * 3. Assign the CR
+	 * 4. return
+	 * */
 
 
-    //SPSResourcePool* candidatesPacket = check_and_cast<SPSResourcePool *>(pkt);
-    slGrant = getSidelinkGrant();
+	slGrant = grant;
+	currentCw_=0;
+
+	EV<<"Number of CSRs: "<<CSRs.size()<<endl;
+
+	//slGrant = check_and_cast<LteSidelinkGrant*>(schedulingGrant_);
+
+	// Select random element from vector
+	int index=0;
+
+	if (CSRs.size()==0)
+	{
+		EV<<"CSRs size: "<<CSRs.size()<<endl;
+		throw cRuntimeError("Cannot allocate CSRs");
+	}
+
+	index = intuniform(0, CSRs.size()-1, 1);
+
+	std::tuple<double, int, double> selectedCR = CSRs[index];
+	// Gives us the time at which we will send the subframe.
 
 
-    EV<<"Number of CSRs: "<<CSRs.size()<<endl;
+	int initialSubchannel = 0;
+	int finalSubchannel = initialSubchannel + slGrant->getNumSubchannels(); // Is this actually one additional subchannel?
 
-    //slGrant = check_and_cast<LteSidelinkGrant*>(schedulingGrant_);
+	EV<<"initial subchannel: "<<initialSubchannel<<" "<<"final subchannel: "<<finalSubchannel<<endl;
+	// Emit statistic about the use of resources, i.e. the initial subchannel and it's length.
+	//emit(selectedSubchannelIndex, initialSubchannel);
+	//emit(selectedNumSubchannels, slGrant->getNumSubchannels());
 
-    // Select random element from vector
-    int index=0;
+	// Determine the RBs on which we will send our message
+	RbMap grantedBlocks;
+	int totalGrantedBlocks = slGrant->getTotalGrantedBlocks();
+	/*for (int i=initialSubchannel;i<finalSubchannel;i++)
+	    {
+	        std::vector<Band> allocatedBands;
+	        for (Band b = i * subchannelSize_; b < (i * subchannelSize_) + subchannelSize_ ; b++)
+	        {
+	            grantedBlocks[MACRO][b] = 1;
+	            ++totalGrantedBlocks;
+	        }
+	    }*/
 
-    if (CSRs.size()==0)
-    {
-        EV<<"CSRs size: "<<CSRs.size()<<endl;
-        throw cRuntimeError("Cannot allocate CSRs");
-    }
+	double startTime= slGrant->getStartTime().dbl();
 
-    index = intuniform(0, CSRs.size()-1, 1);
+	slGrant->setPeriodic(true);
+	slGrant->setGrantedBlocks(grantedBlocks);
+	slGrant->setTotalGrantedBlocks(totalGrantedBlocks);
+	slGrant->setDirection(D2D_MULTI);
+	slGrant->setCodewords(1);
+	slGrant->setStartingSubchannel(initialSubchannel);
+	slGrant->setMcs(maxMCSPSSCH_);
 
-    std::tuple<double, int, double> selectedCR = CSRs[index];
-    // Gives us the time at which we will send the subframe.
-
-
-    int initialSubchannel = 0;
-    int finalSubchannel = initialSubchannel + slGrant->getNumSubchannels(); // Is this actually one additional subchannel?
-
-    EV<<"initial subchannel: "<<initialSubchannel<<" "<<"final subchannel: "<<finalSubchannel<<endl;
-    // Emit statistic about the use of resources, i.e. the initial subchannel and it's length.
-    //emit(selectedSubchannelIndex, initialSubchannel);
-    //emit(selectedNumSubchannels, slGrant->getNumSubchannels());
-
-    // Determine the RBs on which we will send our message
-    RbMap grantedBlocks;
-    int totalGrantedBlocks = slGrant->getTotalGrantedBlocks();
-    /*for (int i=initialSubchannel;i<finalSubchannel;i++)
-    {
-        std::vector<Band> allocatedBands;
-        for (Band b = i * subchannelSize_; b < (i * subchannelSize_) + subchannelSize_ ; b++)
-        {
-            grantedBlocks[MACRO][b] = 1;
-            ++totalGrantedBlocks;
-        }
-    }*/
-
-    double startTime= slGrant->getStartTime().dbl();
-
-    slGrant->setPeriodic(true);
-    slGrant->setGrantedBlocks(grantedBlocks);
-    slGrant->setTotalGrantedBlocks(totalGrantedBlocks);
-    slGrant->setDirection(D2D_MULTI);
-    slGrant->setCodewords(1);
-    slGrant->setStartingSubchannel(initialSubchannel);
-    slGrant->setMcs(maxMCSPSSCH_);
-
-    LteMod mod = _QPSK;
-    if (maxMCSPSSCH_ > 9 && maxMCSPSSCH_ < 17)
-    {
-        mod = _16QAM;
-    }
-    else if (maxMCSPSSCH_ > 16 && maxMCSPSSCH_ < 29 )
-    {
-        mod = _64QAM;
-    }
+	LteMod mod = _QPSK;
+	if (maxMCSPSSCH_ > 9 && maxMCSPSSCH_ < 17)
+	{
+		mod = _16QAM;
+	}
+	else if (maxMCSPSSCH_ > 16 && maxMCSPSSCH_ < 29 )
+	{
+		mod = _64QAM;
+	}
 
 
-    EV<<"totalGrantedBlocks: "<<totalGrantedBlocks<<endl;
-    setAllocatedBlocksSCIandData(totalGrantedBlocks);
-    EV<<"maxMCSPSSCH_: "<<maxMCSPSSCH_<<endl;
+	EV<<"totalGrantedBlocks: "<<totalGrantedBlocks<<endl;
+	setAllocatedBlocksSCIandData(totalGrantedBlocks);
+	EV<<"maxMCSPSSCH_: "<<maxMCSPSSCH_<<endl;
 
-    unsigned int i = (mod == _QPSK ? 0 : (mod == _16QAM ? 9 : (mod == _64QAM ? 15 : 0)));
+	unsigned int i = (mod == _QPSK ? 0 : (mod == _16QAM ? 9 : (mod == _64QAM ? 15 : 0)));
 
-    const unsigned int* tbsVect = itbs2tbs(mod, SINGLE_ANTENNA_PORT0, 1, maxMCSPSSCH_ - i);
-    maximumCapacity_ = tbsVect[totalGrantedBlocks-1];
+	const unsigned int* tbsVect = itbs2tbs(mod, SINGLE_ANTENNA_PORT0, 1, maxMCSPSSCH_ - i);
+	maximumCapacity_ = tbsVect[totalGrantedBlocks-1];
 
-    EV<<"maximum capacity: "<< maximumCapacity_<<endl;
-    slGrant->setGrantedCwBytes(currentCw_, maximumCapacity_);
-    // Simply flips the codeword.
-    currentCw_ = MAX_CODEWORDS - currentCw_;
-    periodCounter_= slGrant->getPeriod();
-    expirationCounter_= (slGrant->getResourceReselectionCounter() * periodCounter_) + 1;
-
-    EV<<"Sidelink Configuration period counter: "<<periodCounter_<<endl;
-    EV<<"Sidelink Configuration expiration counter: "<<expirationCounter_<<endl;
-    EV<<"Sidelink Configuration Granted CWBytes size: "<<slGrant->getGrantedCwBytesArraySize()<<endl;
-    //Implement methods to store expiration counter and period counter
-    slGrant->setPeriodCounter(periodCounter_);
-    slGrant->setExpirationCounter(expirationCounter_);
-    setSidelinkGrant(slGrant);
-
-    // TODO: Setup for HARQ retransmission, if it can't be satisfied then selection must occur again.
+	EV<<"maximum capacity: "<< maximumCapacity_<<" CW: "<<currentCw_<<endl;
+	slGrant->setGrantedCwBytes(currentCw_, maximumCapacity_);
+	// Simply flips the codeword.
+	currentCw_ = MAX_CODEWORDS - currentCw_;
+	EV<<"maximum capacity 2: "<< maximumCapacity_<<" CW: "<<currentCw_<<endl;
+	periodCounter_= slGrant->getPeriod();
+	expirationCounter_= (slGrant->getResourceReselectionCounter() * periodCounter_) + 1;
 
 
-    CSRs.clear();
+	//Implement methods to store expiration counter and period counter
+	slGrant->setPeriodCounter(periodCounter_);
+	slGrant->setExpirationCounter(expirationCounter_);
+	setSidelinkGrant(slGrant);
+
+	// TODO: Setup for HARQ retransmission, if it can't be satisfied then selection must occur again.
+	EV<<"Sidelink Configuration period counter: "<<slGrant->getPeriodCounter()<<endl;
+	EV<<"Sidelink Configuration expiration counter: "<<slGrant->getExpirationCounter()<<endl;
+	EV<<"Sidelink Configuration Granted CWBytes size: "<<slGrant->getGrantedCwBytesArraySize()<<endl;
+	EV<<"Granted CW: "<<slGrant->getGrantedCwBytes(0)<<slGrant->getGrantedCwBytes(1)<<endl;
+	CSRs.clear();
+	return slGrant;
 
 }
 
 LteSidelinkGrant* SidelinkConfiguration::macGenerateSchedulingGrant(double maximumLatency, int priority, int tbSize)
 {
-    /**
-     * 1. Packet priority
-     * 2. Resource reservation interval
-     * 3. Maximum latency
-     * 4. Number of subchannels
-     * 6. Send message to PHY layer looking for CSRs
-     */
-    EV<<"SidelinkConfiguration::macGenerateSchedulingGrant"<<endl;
-    if(rrcCurrentState=="RRC_CONN" ||rrcCurrentState=="RRC_INACTIVE")
-    {
-        slGrant = new LteSidelinkGrant("LteMode3Grant");
-    }
+	/**
+	 * 1. Packet priority
+	 * 2. Resource reservation interval
+	 * 3. Maximum latency
+	 * 4. Number of subchannels
+	 * 6. Send message to PHY layer looking for CSRs
+	 */
+	auto phyGrant = makeShared<LteSidelinkGrant>();
+	EV<<"SidelinkConfiguration::macGenerateSchedulingGrant"<<endl;
+	if(rrcCurrentState=="RRC_CONN" ||rrcCurrentState=="RRC_INACTIVE")
+	{
+		phyGrant = new LteSidelinkGrant("LteMode3Grant");
+	}
 
-    else
-    {
-        slGrant = new LteSidelinkGrant("LteMode4Grant");
-    }
+	else
+	{
+		phyGrant = new LteSidelinkGrant("LteMode4Grant");
+	}
 
 
 
-    // Priority is the most difficult part to figure out, for the moment I will assign it as a fixed value
-    slGrant -> setSpsPriority(priority);
-    slGrant -> setPeriod(restrictResourceReservationPeriod * 100); //resource reservation interval/Prsvp_TX
-    maximumLatency = intuniform(20,100);  //Uniformly varies between 20 ms and 100 ms
-    slGrant -> setMaximumLatency(maximumLatency);
-    slGrant -> setPossibleRRIs(validResourceReservationIntervals_);
-    slGrant->setStartingSubchannel(0);
-    int cbrMinSubchannelNum;
-    int cbrMaxSubchannelNum;
+	// Priority is the most difficult part to figure out, for the moment I will assign it as a fixed value
 
-    std::unordered_map<std::string,double> cbrMap = cbrPSSCHTxConfigList_.at(currentCbrIndex_);
+	phyGrant -> setSpsPriority(priority);
+	phyGrant -> setPeriod(restrictResourceReservationPeriod * 100); //resource reservation interval/Prsvp_TX
+	maximumLatency = intuniform(20,100);  //Uniformly varies between 20 ms and 100 ms
+	phyGrant -> setMaximumLatency(maximumLatency);
+	phyGrant -> setPossibleRRIs(validResourceReservationIntervals_);
+	phyGrant->setStartingSubchannel(0);
+	int cbrMinSubchannelNum;
+	int cbrMaxSubchannelNum;
 
-    std::unordered_map<std::string,double>::const_iterator got = cbrMap.find("allowedRetxNumberPSSCH");
-    if ( got == cbrMap.end() )
-        allowedRetxNumberPSSCH_ = allowedRetxNumberPSSCH_;
-    else
-        allowedRetxNumberPSSCH_ = std::min((int)got->second, allowedRetxNumberPSSCH_);
+	std::unordered_map<std::string,double> cbrMap = cbrPSSCHTxConfigList_.at(currentCbrIndex_);
 
-    got = cbrMap.find("minSubchannel-NumberPSSCH");
-    if ( got == cbrMap.end() )
-        cbrMinSubchannelNum = minSubchannelNumberPSSCH_;
-    else
-        cbrMinSubchannelNum = (int)got->second;
+	std::unordered_map<std::string,double>::const_iterator got = cbrMap.find("allowedRetxNumberPSSCH");
+	if ( got == cbrMap.end() )
+		allowedRetxNumberPSSCH_ = allowedRetxNumberPSSCH_;
+	else
+		allowedRetxNumberPSSCH_ = std::min((int)got->second, allowedRetxNumberPSSCH_);
 
-    got = cbrMap.find("maxSubchannel-NumberPSSCH");
-    if ( got == cbrMap.end() )
-        cbrMaxSubchannelNum = maxSubchannelNumberPSSCH_;
-    else
-        cbrMaxSubchannelNum = (int)got->second;
+	got = cbrMap.find("minSubchannel-NumberPSSCH");
+	if ( got == cbrMap.end() )
+		cbrMinSubchannelNum = minSubchannelNumberPSSCH_;
+	else
+		cbrMinSubchannelNum = (int)got->second;
 
-    /*
-     * Need to pick the number of subchannels for this reservation*/
+	got = cbrMap.find("maxSubchannel-NumberPSSCH");
+	if ( got == cbrMap.end() )
+		cbrMaxSubchannelNum = maxSubchannelNumberPSSCH_;
+	else
+		cbrMaxSubchannelNum = (int)got->second;
 
-    int minSubchannelNumberPSSCH;
-    int maxSubchannelNumberPSSCH;
-    if (maxSubchannelNumberPSSCH_ < cbrMinSubchannelNum || cbrMaxSubchannelNum < minSubchannelNumberPSSCH_)
-    {
-        // No overlap therefore I will use the cbr values (this is left to the UE, the opposite approach is also entirely valid).
-        minSubchannelNumberPSSCH = cbrMinSubchannelNum;
-        maxSubchannelNumberPSSCH = cbrMaxSubchannelNum;
-    }
-    else
-    {
-        minSubchannelNumberPSSCH = std::max(minSubchannelNumberPSSCH_, cbrMinSubchannelNum);
-        maxSubchannelNumberPSSCH = std::min(maxSubchannelNumberPSSCH_, cbrMaxSubchannelNum);
-    }
+	/*
+	 * Need to pick the number of subchannels for this reservation*/
 
-    // Selecting the number of subchannel at random as there is no explanation as to the logic behind selecting the resources in the range unlike when selecting MCS.
-    int numSubchannels = intuniform(minSubchannelNumberPSSCH, maxSubchannelNumberPSSCH);
+	int minSubchannelNumberPSSCH;
+	int maxSubchannelNumberPSSCH;
+	if (maxSubchannelNumberPSSCH_ < cbrMinSubchannelNum || cbrMaxSubchannelNum < minSubchannelNumberPSSCH_)
+	{
+		// No overlap therefore I will use the cbr values (this is left to the UE, the opposite approach is also entirely valid).
+		minSubchannelNumberPSSCH = cbrMinSubchannelNum;
+		maxSubchannelNumberPSSCH = cbrMaxSubchannelNum;
+	}
+	else
+	{
+		minSubchannelNumberPSSCH = std::max(minSubchannelNumberPSSCH_, cbrMinSubchannelNum);
+		maxSubchannelNumberPSSCH = std::min(maxSubchannelNumberPSSCH_, cbrMaxSubchannelNum);
+	}
 
-    slGrant -> setNumberSubchannels(maxSubchannelNumberPSSCH);
+	// Selecting the number of subchannel at random as there is no explanation as to the logic behind selecting the resources in the range unlike when selecting MCS.
+	int numSubchannels = intuniform(minSubchannelNumberPSSCH, maxSubchannelNumberPSSCH);
 
-    // Based on restrictResourceReservation interval But will be between 1 and 15
-    // Again technically this needs to reconfigurable as well. But all of that needs to come in through ini and such.
+	phyGrant -> setNumberSubchannels(maxSubchannelNumberPSSCH);
 
-    resourceReselectionCounter_ = intuniform(5, 15); // Beacuse RRI = 100ms
+	// Based on restrictResourceReservation interval But will be between 1 and 15
+	// Again technically this needs to reconfigurable as well. But all of that needs to come in through ini and such.
 
-    slGrant -> setResourceReselectionCounter(resourceReselectionCounter_);
-    slGrant -> setExpiration(resourceReselectionCounter_ * restrictResourceReservationPeriod);
-    slGrant->setTransmitBlockSize(tbSize);
+	resourceReselectionCounter_ = intuniform(5, 15); // Beacuse RRI = 100ms
 
-    LteSidelinkGrant* phyGrant = slGrant;
+	phyGrant-> setResourceReselectionCounter(resourceReselectionCounter_);
+	phyGrant -> setExpiration(resourceReselectionCounter_ * restrictResourceReservationPeriod);
+	phyGrant->setTransmitBlockSize(tbSize);
 
-    LteMacBase* mac=check_and_cast<LteMacBase*>(getParentModule()->getSubmodule("mac"));
-    UserControlInfo* uinfo = new UserControlInfo();
+	Packet* pkt = new Packet("LteMode4Grant");
 
-    uinfo->setSourceId(mac->getMacNodeId());
-    uinfo->setDestId(mac->getMacNodeId());
-    uinfo->setFrameType(SIDELINKGRANT);
+	phyGrant->setDirection(D2D_MULTI);
 
-    phyGrant->setDirection(D2D_MULTI);
-    //phyGrant->setControlInfo(uinfo);
+	//cPacket* p = check_and_cast<cPacket*>(phyGrant);
+	LteMacBase* mac=check_and_cast<LteMacBase*>(getParentModule()->getSubmodule("mac"));
+	//  LteMacBase* mac=check_and_cast<LteMacBase*>(getParentModule()->getSubmodule("mac"));
+	//UserControlInfo* uinfo = new UserControlInfo();
+	//auto uinfo = makeShared<UserControlInfo>();
 
-    //mac->sendLowerPackets( phyGrant);
-    schedulingGrant_ = slGrant;
-    //emit(grantRequest, 1);
-    emit(grantStartTime,80);
-    setSidelinkGrant(slGrant);
-    return slGrant;
+
+	//grantpkt->setControlInfo(uinfo);
+
+	auto uinfo = pkt->addTagIfAbsent<UserControlInfo>();
+	uinfo->setSourceId(mac->getMacNodeId());
+	uinfo->setDestId(mac->getMacNodeId());
+	uinfo->setFrameType(SIDELINKGRANT);
+
+	pkt->insertAtBack(phyGrant);
+	mac->sendLowerPackets(pkt);
+
+	//schedulingGrant_ = slGrant;
+	//emit(grantRequest, 1);
+	emit(grantStartTime,80);
+	slGrant=phyGrant->dup();
+	setSidelinkGrant(slGrant);
+	return slGrant;
+
 
 }
 
 void SidelinkConfiguration::flushHarqBuffers(HarqTxBuffers harqTxBuffers_, LteSidelinkGrant* grant)
 {
-    // send the selected units to lower layers
-    // First make sure packets are sent down
-    // HARQ retrans needs to be taken into account
-    // Maintain unit list maybe and that causes retrans?
-    // But purge them once all messages sent.
+	// send the selected units to lower layers
+	// First make sure packets are sent down
+	// HARQ retrans needs to be taken into account
+	// Maintain unit list maybe and that causes retrans?
+	// But purge them once all messages sent.
 
-    slGrant = grant;
+	slGrant = grant;
 
-    //slGrant = dynamic_cast<LteSidelinkGrant*>(schedulingGrant_);
+	//slGrant = dynamic_cast<LteSidelinkGrant*>(schedulingGrant_);
 
-    HarqTxBuffers::iterator it2;
-    EV<<"Harq size: "<<harqTxBuffers_.size()<<endl;
-    EV<<"Scheduling grant: "<<slGrant<<endl;
+	HarqTxBuffers::iterator it2;
+	EV<<"Harq size: "<<harqTxBuffers_.size()<<endl;
+	EV<<"Scheduling grant: "<<slGrant<<endl;
 
-    for(it2 = harqTxBuffers_.begin(); it2 != harqTxBuffers_.end(); it2++)
-    {
-        //EV<<"SidelinkConfiguration::flushHarqBuffers for: "<<it2->second->isSelected()<<endl;
-
-
-        std::unordered_map<std::string,double> cbrMap = cbrPSSCHTxConfigList_.at(currentCbrIndex_);
-        std::unordered_map<std::string,double>::const_iterator got;
+	for(it2 = harqTxBuffers_.begin(); it2 != harqTxBuffers_.end(); it2++)
+	{
+		//EV<<"SidelinkConfiguration::flushHarqBuffers for: "<<it2->second->isSelected()<<endl;
 
 
-        if (packetDropping_) {
-            throw cRuntimeError("debug 1");
-            double crLimit;
-            got = cbrMap.find("cr-Limit");
-            if (got == cbrMap.end())
-                crLimit = 1;
-            else
-                crLimit = got->second;
-
-            if (channelOccupancyRatio_ > crLimit) {
-                throw cRuntimeError("debug 2");
-                // Need to drop the unit currently selected
-                UnitList ul = it2->second->firstAvailable();
-                it2->second->forceDropProcess(ul.first);
-                //emit(packetDropDCC, 1);
-            }
-        }
-
-        //it2->second->isSelected()
-        if (1)
-        {
-            //throw cRuntimeError("debug 3");
-            LteHarqProcessTx* selectedProcess = it2->second->getSelectedProcess();
-
-            for (int cw=0; cw<MAX_CODEWORDS; cw++)
-            {
-
-                int pduLength = selectedProcess->getPduLength(cw);
-                EV<<"PDU length: "<<pduLength<<endl;
-                emit(dataSize,pduLength);
-                //throw cRuntimeError("debug 4");
-                if ( pduLength > 0)
-                {
-                    int cbrMinMCS;
-                    int cbrMaxMCS;
-
-                    got = cbrMap.find("minMCS-PSSCH");
-                    if ( got == cbrMap.end() )
-                        cbrMinMCS = minMCSPSSCH_;
-                    else
-                        cbrMinMCS = (int)got->second;
-
-                    got = cbrMap.find("maxMCS-PSSCH");
-
-                    if ( got == cbrMap.end() )
-                        cbrMaxMCS = maxMCSPSSCH_;
-                    else
-                        cbrMaxMCS = (int)got->second;
-
-                    int minMCS;
-                    int maxMCS;
-
-                    if (maxMCSPSSCH_ < cbrMinMCS || cbrMaxMCS < minMCSPSSCH_)
-                    {
-                        // No overlap therefore I will use the cbr values (this is left to the UE).
-                        minMCS = cbrMinMCS;
-                        maxMCS = cbrMaxMCS;
-                    }
-                    else
-                    {
-                        minMCS = std::max(minMCSPSSCH_, cbrMinMCS);
-                        maxMCS = std::min(maxMCSPSSCH_, cbrMaxMCS);
-                    }
-
-                    bool foundValidMCS = false;
-                    int totalGrantedBlocks =  slGrant->getTotalGrantedBlocks();
-                    EV<<"totalGrantedBlocks: "<<totalGrantedBlocks<<endl;
-
-                    int mcsCapacity = 0;
-                    for (int mcs=minMCS; mcs < maxMCS; mcs++)
-                    {
-                        LteMod mod = _QPSK;
-                        if (maxMCSPSSCH_ > 9 && maxMCSPSSCH_ < 17)
-                        {
-                            mod = _16QAM;
-                        }
-                        else if (maxMCSPSSCH_ > 16 && maxMCSPSSCH_ < 29 )
-                        {
-                            mod = _64QAM;
-                        }
-
-                        unsigned int i = (mod == _QPSK ? 0 : (mod == _16QAM ? 9 : (mod == _64QAM ? 15 : 0)));
-
-                        const unsigned int* tbsVect = itbs2tbs(mod, SINGLE_ANTENNA_PORT0, 1, mcs - i);
-                        mcsCapacity = tbsVect[totalGrantedBlocks-1];
-                        EV<<" mcsCapacity: "<< mcsCapacity <<endl;
+		std::unordered_map<std::string,double> cbrMap = cbrPSSCHTxConfigList_.at(currentCbrIndex_);
+		std::unordered_map<std::string,double>::const_iterator got;
 
 
-                            EV<<"Valid MCS found: "<<endl;
-                            foundValidMCS = true;
+		if (packetDropping_) {
+			throw cRuntimeError("debug 1");
+			double crLimit;
+			got = cbrMap.find("cr-Limit");
+			if (got == cbrMap.end())
+				crLimit = 1;
+			else
+				crLimit = got->second;
 
-                            slGrant->setMcs(mcs);
+			if (channelOccupancyRatio_ > crLimit) {
+				throw cRuntimeError("debug 2");
+				// Need to drop the unit currently selected
+				UnitList ul = it2->second->firstAvailable();
+				it2->second->forceDropProcess(ul.first);
+				//emit(packetDropDCC, 1);
+			}
+		}
 
-                            slGrant->setGrantedCwBytes(cw, mcsCapacity);
+		//it2->second->isSelected()
+		if (1)
+		{
+			//throw cRuntimeError("debug 3");
+			LteHarqProcessTx* selectedProcess = it2->second->getSelectedProcess();
 
-                            if (! slGrant->getUserTxParams())
-                            {
-                                slGrant->setUserTxParams(preconfiguredTxParams_);
-                            }
+			for (int cw=0; cw<MAX_CODEWORDS; cw++)
+			{
 
-                            /*  LteSidelinkGrant* phyGrant =  slGrant;
+				int pduLength = selectedProcess->getPduLength(cw);
+				EV<<"PDU length: "<<pduLength<<endl;
+				emit(dataSize,pduLength);
+				//throw cRuntimeError("debug 4");
+				if ( pduLength > 0)
+				{
+					int cbrMinMCS;
+					int cbrMaxMCS;
+
+					got = cbrMap.find("minMCS-PSSCH");
+					if ( got == cbrMap.end() )
+						cbrMinMCS = minMCSPSSCH_;
+					else
+						cbrMinMCS = (int)got->second;
+
+					got = cbrMap.find("maxMCS-PSSCH");
+
+					if ( got == cbrMap.end() )
+						cbrMaxMCS = maxMCSPSSCH_;
+					else
+						cbrMaxMCS = (int)got->second;
+
+					int minMCS;
+					int maxMCS;
+
+					if (maxMCSPSSCH_ < cbrMinMCS || cbrMaxMCS < minMCSPSSCH_)
+					{
+						// No overlap therefore I will use the cbr values (this is left to the UE).
+						minMCS = cbrMinMCS;
+						maxMCS = cbrMaxMCS;
+					}
+					else
+					{
+						minMCS = std::max(minMCSPSSCH_, cbrMinMCS);
+						maxMCS = std::min(maxMCSPSSCH_, cbrMaxMCS);
+					}
+
+					bool foundValidMCS = false;
+					int totalGrantedBlocks =  slGrant->getTotalGrantedBlocks();
+					EV<<"totalGrantedBlocks: "<<totalGrantedBlocks<<endl;
+
+					int mcsCapacity = 0;
+					for (int mcs=minMCS; mcs < maxMCS; mcs++)
+					{
+						LteMod mod = _QPSK;
+						if (maxMCSPSSCH_ > 9 && maxMCSPSSCH_ < 17)
+						{
+							mod = _16QAM;
+						}
+						else if (maxMCSPSSCH_ > 16 && maxMCSPSSCH_ < 29 )
+						{
+							mod = _64QAM;
+						}
+
+						unsigned int i = (mod == _QPSK ? 0 : (mod == _16QAM ? 9 : (mod == _64QAM ? 15 : 0)));
+
+						const unsigned int* tbsVect = itbs2tbs(mod, SINGLE_ANTENNA_PORT0, 1, mcs - i);
+						mcsCapacity = tbsVect[totalGrantedBlocks-1];
+						EV<<" mcsCapacity: "<< mcsCapacity <<endl;
+
+
+						EV<<"Valid MCS found: "<<endl;
+						foundValidMCS = true;
+
+						slGrant->setMcs(mcs);
+
+						slGrant->setGrantedCwBytes(cw, mcsCapacity);
+
+						if (! slGrant->getUserTxParams())
+						{
+							slGrant->setUserTxParams(preconfiguredTxParams_);
+						}
+
+						/*  LteSidelinkGrant* phyGrant =  slGrant;
 
                             LteMacBase* mac=check_and_cast<LteMacBase*>(getParentModule()->getSubmodule("mac"));
                             UserControlInfo* uinfo = new UserControlInfo();
@@ -1008,63 +1028,63 @@ void SidelinkConfiguration::flushHarqBuffers(HarqTxBuffers harqTxBuffers_, LteSi
                             uinfo->setSubchannelLength(slGrant->getNumSubchannels());
                             uinfo->setGrantStartTime(slGrant->getStartTime());*/
 
-                            //phyGrant->setControlInfo(uinfo);
+						//phyGrant->setControlInfo(uinfo);
 
-                            // Send Grant to PHY layer for sci creation
-                            //mac->sendLowerPackets(phyGrant);
+						// Send Grant to PHY layer for sci creation
+						//mac->sendLowerPackets(phyGrant);
 
-                            // Send pdu to PHY layer for sending.
-                            it2->second->sendSelectedDown();
+						// Send pdu to PHY layer for sending.
+						it2->second->sendSelectedDown();
 
-                            // Log transmission to A calculation log
-                            previousTransmissions_[NOW.dbl()] =  slGrant->getNumSubchannels();
+						// Log transmission to A calculation log
+						previousTransmissions_[NOW.dbl()] =  slGrant->getNumSubchannels();
 
-                            missedTransmissions_ = 0;
+						missedTransmissions_ = 0;
 
-                            //emit(selectedMCS, mcs);
-                            EV<<"VALID MCS: "<<foundValidMCS<<endl;
+						//emit(selectedMCS, mcs);
+						EV<<"VALID MCS: "<<foundValidMCS<<endl;
 
 
-                    }
-                    if (!foundValidMCS)
-                    {
-                        //throw cRuntimeError("debug 5");
-                        // Never found an MCS to satisfy the requirements of the message must regenerate grant
-                        //slGrant = check_and_cast<LteSidelinkGrant*>(schedulingGrant_);
-                        int priority =  slGrant->getSpsPriority();
-                        int latency =  slGrant->getMaximumLatency();
-                        simtime_t elapsedTime = NOW - receivedTime_;
-                        remainingTime_ -= elapsedTime.dbl();
+					}
+					if (!foundValidMCS)
+					{
+						//throw cRuntimeError("debug 5");
+						// Never found an MCS to satisfy the requirements of the message must regenerate grant
+						//slGrant = check_and_cast<LteSidelinkGrant*>(schedulingGrant_);
+						int priority =  slGrant->getSpsPriority();
+						int latency =  slGrant->getMaximumLatency();
+						simtime_t elapsedTime = NOW - receivedTime_;
+						remainingTime_ -= elapsedTime.dbl();
 
-                        //emit(grantBreakSize, pduLength);
-                        //emit(maximumCapacity, mcsCapacity);
+						//emit(grantBreakSize, pduLength);
+						//emit(maximumCapacity, mcsCapacity);
 
-                        if (remainingTime_ <= 0)
-                        {
-                            //emit(droppedTimeout, 1);
-                            selectedProcess->forceDropProcess();
-                            delete schedulingGrant_;
-                            schedulingGrant_ = NULL;
-                        }
-                        else
-                        {
-                            delete schedulingGrant_;
-                            schedulingGrant_ = NULL;
-                            macGenerateSchedulingGrant(remainingTime_, priority, 0);
-                        }
-                    }
-                }
-                break;
-            }
-        }
-        else
-        {
+						if (remainingTime_ <= 0)
+						{
+							//emit(droppedTimeout, 1);
+							selectedProcess->forceDropProcess();
+							delete schedulingGrant_;
+							schedulingGrant_ = NULL;
+						}
+						else
+						{
+							delete schedulingGrant_;
+							schedulingGrant_ = NULL;
+							macGenerateSchedulingGrant(remainingTime_, priority, 0);
+						}
+					}
+				}
+				break;
+			}
+		}
+		else
+		{
 
-            // if no transmission check if we need to break the grant.
-            ++missedTransmissions_;
-            //emit(missedTransmission, 1);
+			// if no transmission check if we need to break the grant.
+			++missedTransmissions_;
+			//emit(missedTransmission, 1);
 
-            /* LteSidelinkGrant* phyGrant =  slGrant->dup();
+			/* LteSidelinkGrant* phyGrant =  slGrant->dup();
             phyGrant->setSpsPriority(0);
 
 
@@ -1077,7 +1097,7 @@ void SidelinkConfiguration::flushHarqBuffers(HarqTxBuffers harqTxBuffers_, LteSi
             uinfo->setUserTxParams(preconfiguredTxParams_);
 
             phyGrant->setControlInfo(uinfo);*/
-            /*
+			/*
             if (missedTransmissions_ >= reselectAfter_)
             {
                 phyGrant->setPeriod(0);
@@ -1089,18 +1109,18 @@ void SidelinkConfiguration::flushHarqBuffers(HarqTxBuffers harqTxBuffers_, LteSi
                 //emit(grantBreakMissedTrans, 1);
             }*/
 
-            // Send Grant to PHY layer for sci creation
-            /*            LteMacBase* mac = dynamic_cast<LteMacBase*>(getParentModule()->getSubmodule("mac"));
+			// Send Grant to PHY layer for sci creation
+			/*            LteMacBase* mac = dynamic_cast<LteMacBase*>(getParentModule()->getSubmodule("mac"));
             mac->sendLowerPackets(phyGrant);*/
-        }
+		}
 
-    }
-    if (expiredGrant_) {
-        // Grant has expired, only generate new grant on receiving next message to be sent.
-        delete schedulingGrant_;
-        schedulingGrant_ = NULL;
-        expiredGrant_ = false;
-    }
+	}
+	if (expiredGrant_) {
+		// Grant has expired, only generate new grant on receiving next message to be sent.
+		delete schedulingGrant_;
+		schedulingGrant_ = NULL;
+		expiredGrant_ = false;
+	}
 
 }
 
@@ -1111,10 +1131,10 @@ void SidelinkConfiguration::finish()
 
 void SidelinkConfiguration::setSidelinkGrant(LteSidelinkGrant* slGrant)
 {
-    slGrant = slGrant;
+	slGrant = slGrant;
 }
 
 void SidelinkConfiguration::setAllocatedBlocksSCIandData(int totalGrantedBlocks)
 {
-    allocatedBlocksSCIandData = totalGrantedBlocks;
+	allocatedBlocksSCIandData = totalGrantedBlocks;
 }

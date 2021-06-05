@@ -234,7 +234,7 @@ protected:
 
 
 public:
-    virtual void macHandleSps(std::vector<std::tuple<double, int, double>> , std::string );
+    virtual LteSidelinkGrant* macHandleSps(std::vector<std::tuple<double, int, double>> , std::string , LteSidelinkGrant*);
 
     SidelinkConfiguration();
     virtual ~SidelinkConfiguration();
