@@ -29,12 +29,16 @@ module LteRlc {
         inout UM_Sap;    // Unacknowledged Mode SAP
         inout AM_Sap;    // Acknowledged Mode SAP
 
+        inout TM_control;
+        inout AM_control;
+        inout UM_control;
         //# 
         //# Gates connecting RLC and MAC Layers
         //#
-
+        
         input MAC_to_RLC;    // MAC to RLC
         output RLC_to_MAC;    // RLC to MAC
+        
 
     submodules:
         // TM Module
@@ -80,6 +84,10 @@ module LteRlc {
         //#
         mux.MAC_to_RLC <-- MAC_to_RLC;
         mux.RLC_to_MAC --> RLC_to_MAC;
+        //#Control plane
+        tm.TM_control <--> TM_control;
+        um.UM_control <--> UM_control;
+        am.AM_control <--> AM_control  ;
 }
 
 // 
@@ -111,6 +119,7 @@ simple LteRlcTm {
         //# 
         inout TM_Sap_up;    // Gate to PDCP
         inout TM_Sap_down;    // Gate to RLC Mux
+        inout TM_control;
 }
 
 // 
@@ -123,6 +132,7 @@ moduleinterface ILteRlcUm {
     gates:
         inout UM_Sap_up;    // Gate to PDCP
         inout UM_Sap_down;    // Gate to RLC Mux
+        inout UM_control;
 }
 
 simple LteRlcUm like ILteRlcUm {
@@ -189,6 +199,7 @@ simple LteRlcUm like ILteRlcUm {
         //# 
         inout UM_Sap_up;    // Gate to PDCP
         inout UM_Sap_down;    // Gate to RLC Mux
+        inout UM_control;
 }
 
 // 
@@ -270,6 +281,7 @@ simple LteRlcAm {
         //# 
         inout AM_Sap_up;    // Gate to PDCP
         inout AM_Sap_down;    // Gate to RLC Mux
+        inout AM_control;
 }
 
 // 
