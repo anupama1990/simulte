@@ -48,13 +48,14 @@ class SIMULTE_API UmTxEntity : public omnetpp::cSimpleModule
 
     FragmentInfo *fragmentInfo = nullptr;
 
-  protected:
+protected:
     std::deque<inet::Packet *> *fragments = nullptr;
 
-  public:
+public:
     UmTxEntity()
     {
         flowControlInfo_ = nullptr;
+        info = nullptr;
         lteRlc_ = nullptr;
     }
     virtual ~UmTxEntity()
@@ -76,10 +77,10 @@ class SIMULTE_API UmTxEntity : public omnetpp::cSimpleModule
      *
      * @param size of a pdu
      */
-    void rlcPduMake(int pduSize);
+    void rlcPduMake(int pduSize, LteControlInfo*);
 
-    void setFlowControlInfo(FlowControlInfo* lteInfo) { flowControlInfo_ = lteInfo; }
-    FlowControlInfo* getFlowControlInfo() { return flowControlInfo_; }
+    void setFlowControlInfo(LteControlInfo* lteInfo) { flowControlInfo_ = lteInfo; }
+    LteControlInfo* getFlowControlInfo() { return flowControlInfo_; }
 
     // force the sequence number to assume the sno passed as argument
     void setNextSequenceNumber(unsigned int nextSno) { sno_ = nextSno; }
@@ -111,7 +112,7 @@ class SIMULTE_API UmTxEntity : public omnetpp::cSimpleModule
     // called when a D2D mode switch is triggered
     void rlcHandleD2DModeSwitch(bool oldConnection, bool clearBuffer=true);
 
-  protected:
+protected:
 
     // reference to the parent's RLC layer
     LteRlcUm* lteRlc_;
@@ -120,7 +121,8 @@ class SIMULTE_API UmTxEntity : public omnetpp::cSimpleModule
      * Flow-related info.
      * Initialized with the control info of the first packet of the flow
      */
-    FlowControlInfo* flowControlInfo_;
+    LteControlInfo* flowControlInfo_;
+    FlowControlInfo* info;
 
     /*
      * The SDU enqueue buffer.
@@ -164,7 +166,7 @@ class SIMULTE_API UmTxEntity : public omnetpp::cSimpleModule
      */
     virtual void initialize() override;
 
-  private:
+private:
 
     // Node id of the owner module
     MacNodeId ownerNodeId_;

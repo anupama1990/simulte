@@ -48,7 +48,7 @@ void UmRxEntity::enque(cPacket* pktAux)
 
     auto pktPdu = check_and_cast<Packet *>(pktAux);
     auto pdu = pktPdu->peekAtFront<LteRlcUmDataPdu>();
-    auto lteInfo = pktPdu->getTag<FlowControlInfo>();
+    auto lteInfo = pktPdu->getTag<LteControlInfo>();
 
     // Get the RLC PDU Transmission sequence number (x)
     unsigned int tsn = pdu->getPduSequenceNumber();
@@ -248,7 +248,7 @@ void UmRxEntity::toPdcp(Packet* pktAux)
     auto rlcSdu = pktAux->popAtFront<LteRlcSdu>();
     LteRlcUm* lteRlc = check_and_cast<LteRlcUm*>(getParentModule()->getSubmodule("um"));
 
-    auto lteInfo = pktAux->getTag<FlowControlInfo>();
+    auto lteInfo = pktAux->getTag<LteControlInfo>();
     unsigned int sno = rlcSdu->getSnoMainPacket();
     unsigned int length = pktAux->getByteLength();
     simtime_t ts = pktAux->getCreationTime();
@@ -329,7 +329,7 @@ void UmRxEntity::reassemble(unsigned int index)
 
     auto pktPdu = check_and_cast<Packet*>(pduBuffer_.get(index));
     auto pdu = pktPdu->removeAtFront<LteRlcUmDataPdu>();
-    auto lteInfo = pktPdu->getTag<FlowControlInfo>();
+    auto lteInfo = pktPdu->getTag<LteControlInfo>();
 
     // get PDU seq number
     unsigned int pduSno = pdu->getPduSequenceNumber();

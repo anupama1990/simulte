@@ -42,8 +42,8 @@ class SIMULTE_API UmRxEntity : public omnetpp::cSimpleModule
      */
     void enque(omnetpp::cPacket* pkt);
 
-    void setFlowControlInfo(FlowControlInfo* lteInfo) { flowControlInfo_ = lteInfo; }
-    FlowControlInfo* getFlowControlInfo() { return flowControlInfo_; }
+    void setFlowControlInfo(LteControlInfo* lteInfo) { flowControlInfo_ = lteInfo; }
+    LteControlInfo* getFlowControlInfo() { return flowControlInfo_; }
 
     // returns true if this entity is for a D2D_MULTI connection
     bool isD2DMultiConnection() { return (flowControlInfo_->getDirection() == D2D_MULTI); }
@@ -98,7 +98,7 @@ class SIMULTE_API UmRxEntity : public omnetpp::cSimpleModule
      * Flow-related info.
      * Initialized with the control info of the first packet of the flow
      */
-    FlowControlInfo* flowControlInfo_;
+    LteControlInfo* flowControlInfo_;
 
     // The PDU enqueue buffer.
     omnetpp::cArray pduBuffer_;
