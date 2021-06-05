@@ -10,7 +10,7 @@
 
 package lte.stack;
 
-import inet.linklayer.contract.IWirelessNic;
+//import inet.linklayer.contract.IWirelessNic;
 import lte.stack.phy.LtePhy;
 import lte.stack.mac.LteMac;
 import lte.stack.pdcp_rrc.LtePdcpRrc;
@@ -25,12 +25,14 @@ import lte.control.ControlPlane;
 import lte.stack.phy.ChannelModel.LteChannelModelInterface;
 import lte.stack.phy.resources.SidelinkResourceAllocation;
 import lte.stack.mac.configuration.SidelinkConfiguration;
-import lte.corenetwork.multiplextraffic.TrafficMux;
+//import lte.corenetwork.multiplextraffic.TrafficMux;
 
+import inet.linklayer.contract.IWirelessInterface;
+import inet.networklayer.common.NetworkInterface;
 // 
 // Interface for the LTE Stack.
 //
-moduleinterface ILteNic extends IWirelessNic
+moduleinterface ILteNic extends IWirelessInterface
 {
         string nodeType;
         //bool d2dCapable;            // inherit the value from the parent module
@@ -38,7 +40,11 @@ moduleinterface ILteNic extends IWirelessNic
         inout EUTRAN_RRC_Sap;   // Control of RRC Layer
         inout x2[] @loose;     // optional x2 manager
         input control_IN @loose;
-        
+        //input radioIn @loose; 
+        //input upperLayerIn @loose;
+        //output upperLayerOut @loose;
+        input upperLayerNonIpIn @loose;
+        output upperLayerNonIpOut @loose;
         
 }
 
@@ -46,7 +52,7 @@ moduleinterface ILteNic extends IWirelessNic
 // Base module for the LTE Stack.
 //
 // TODO: implement IWirelessNic
-module LteNicBase like ILteNic
+module LteNicBase extends NetworkInterface like ILteNic
 {
     parameters:
         @display("i=block/ifcard;bgb=808.19196,583.29596;bgl=3");
