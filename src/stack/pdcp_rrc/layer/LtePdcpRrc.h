@@ -20,7 +20,7 @@
 #include "stack/pdcp_rrc/packet/LtePdcpPdu_m.h"
 #include "stack/pdcp_rrc/layer/entity/LtePdcpEntity.h"
 #include "stack/phy/layer/LtePhyBase.h"
-
+#include"common/FlowControlInfoNonIp.h"
 
 
 #define LTE_PDCP_HEADER_COMPRESSION_DISABLED B(-1)
@@ -178,6 +178,7 @@ protected:
 	 */
 	void headerDecompress(Packet* pkt);
 
+
 	/*
 	 * Functions to be implemented from derived classes
 	 */
@@ -217,6 +218,7 @@ protected:
 	virtual Direction getDirection() = 0;
 	void setTrafficInformation(cPacket* pkt, inet::Ptr<FlowControlInfo> lteInfo);
 	void setTrafficInformation(cPacket* pkt, inet::Ptr<FlowControlInfoNonIp>  nonIpInfo);
+
 	/*
 	 * Upper Layer Handlers
 	 */

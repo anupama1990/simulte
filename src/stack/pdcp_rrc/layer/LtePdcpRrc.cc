@@ -40,6 +40,12 @@ LtePdcpRrcBase::~LtePdcpRrcBase()
 	}
 	entities_.clear();
 }
+bool LtePdcpRrcBase::isCompressionEnabled()
+{
+	return (headerCompressedSize_ != LTE_PDCP_HEADER_COMPRESSION_DISABLED);
+}
+
+
 
 void LtePdcpRrcBase::headerCompress(Packet* pkt)
 {
@@ -119,6 +125,8 @@ void LtePdcpRrcBase::headerDecompress(Packet* pkt)
  * lteInfo->setTraffic();
  * lteInfo->setRlcType();
  */
+
+
 void LtePdcpRrcBase::setTrafficInformation(cPacket* pkt,
 		inet::Ptr<FlowControlInfo> lteInfo)
 {
@@ -157,7 +165,7 @@ void LtePdcpRrcBase::setTrafficInformation(cPacket* pkt, inet::Ptr<FlowControlIn
 
 	nonIpInfo->setApplication(GEONET);
 	nonIpInfo->setTraffic(CAM);
-	nonIpInfo->setRlcType((int) par("backgroundRlc"));
+	nonIpInfo->setRlcType(UM);
 	nonIpInfo->setDirection(getDirection());
 }
 
@@ -335,13 +343,13 @@ void LtePdcpRrcBase::toDataPort(cPacket *pktAux)
 {
 
 	auto pkt = check_and_cast<Packet *>(pktAux);
-	    emit(receivedPacketFromLowerLayer, pkt);
+	emit(receivedPacketFromLowerLayer, pkt);
 
-	    auto pdcpPkt = pkt->popAtFront<LtePdcpPdu>();
+	auto pdcpPkt = pkt->popAtFront<LtePdcpPdu>();
 
 	if (ipBased_)
 	{
-		 auto lteInfo = pkt->removeTag<FlowControlInfo>();
+		auto lteInfo = pkt->removeTag<FlowControlInfo>();
 		EV << "LtePdcp : Received packet with CID " << lteInfo->getLcid() << "\n";
 		EV << "LtePdcp : Packet size " << pkt->getByteLength() << " Bytes\n";
 
@@ -351,7 +359,7 @@ void LtePdcpRrcBase::toDataPort(cPacket *pktAux)
 		pkt->addTagIfAbsent<PacketProtocolTag>()->setProtocol(&Protocol::ipv4);
 
 		EV << "LtePdcp : Sending packet " << pkt->getName()
-			    						   << " on port DataPort$o" << std::endl;
+			    								   << " on port DataPort$o" << std::endl;
 		// Send message
 		send(pkt, dataPort_[OUT_GATE]);
 		emit(sentPacketToUpperLayer, pkt);
@@ -360,7 +368,7 @@ void LtePdcpRrcBase::toDataPort(cPacket *pktAux)
 	}
 	else
 	{
-		 auto lteInfo = pkt->removeTag<FlowControlInfoNonIp>();
+		auto lteInfo = pkt->removeTag<FlowControlInfoNonIp>();
 		EV << "LtePdcp : Received packet with CID " << lteInfo->getLcid() << "\n";
 		EV << "LtePdcp : Packet size " << pkt->getByteLength() << " Bytes\n";
 
@@ -370,7 +378,7 @@ void LtePdcpRrcBase::toDataPort(cPacket *pktAux)
 		pkt->addTagIfAbsent<PacketProtocolTag>()->setProtocol(&Protocol::ipv4);
 
 		EV << "LtePdcp : Sending packet " << pkt->getName()
-					    						   << " on port DataPort$o" << std::endl;
+					    								   << " on port DataPort$o" << std::endl;
 		// Send message
 		send(pkt, dataPort_[OUT_GATE]);
 		emit(sentPacketToUpperLayer, pkt);
@@ -430,7 +438,7 @@ void LtePdcpRrcBase::toEutranRrcSap(cPacket *pkt)
 	delete pkt;
 
 	EV << "LteRrc : Sending packet " << upPkt->getName()
-            						   << " on port EUTRAN_RRC_Sap$o\n";
+            								   << " on port EUTRAN_RRC_Sap$o\n";
 	send(upPkt, eutranRrcSap_[OUT_GATE]);
 }
 
@@ -442,8 +450,8 @@ void LtePdcpRrcBase::initialize(int stage)
 {
 	if (stage == inet::INITSTAGE_LOCAL)
 	{
-		dataPort_[IN_GATE] = gate("DataPort$i");
-		dataPort_[OUT_GATE] = gate("DataPort$o");
+		//dataPort_[IN_GATE] = gate("DataPort$i");
+		//dataPort_[OUT_GATE] = gate("DataPort$o");
 		DataPortIpIn = gate("DataPortIpIn");
 		DataPortIpOut = gate("DataPortIpOut");
 		DataPortNonIpIn = gate("DataPortNonIpIn");
@@ -456,7 +464,8 @@ void LtePdcpRrcBase::initialize(int stage)
 		umSap_[OUT_GATE] = gate("UM_Sap$o");
 		amSap_[IN_GATE] = gate("AM_Sap$i");
 		amSap_[OUT_GATE] = gate("AM_Sap$o");
-
+        control_IN = gate("control$i");
+        control_OUT = gate("control$o");
 		binder_ = getBinder();
 		headerCompressedSize_ = B(par("headerCompressedSize"));
 		if(headerCompressedSize_ != LTE_PDCP_HEADER_COMPRESSION_DISABLED &&
@@ -487,13 +496,13 @@ void LtePdcpRrcBase::setNodeType(std::string s)
 void LtePdcpRrcBase::handleMessage(cMessage* msg)
 {
 	cPacket* pkt = check_and_cast<cPacket *>(msg);
-	EV << "LtePdcpRrcBase::handleMessage LtePdcp : Received packet " << pkt->getName() << " from port "
+
+	EV << "LtePdcpRrcBase::handleMessage: received packet: " << pkt->getName()<<"size: "<<pkt->getByteLength() << " from port: "
 			<< pkt->getArrivalGate()->getName() << endl;
 
 	cGate* incoming = pkt->getArrivalGate();
 	if (incoming == DataPortIpIn || incoming == DataPortNonIpIn)
 	{
-		EV<<"Incoming: DataPortIn"<<endl;
 		fromDataPort(pkt);
 	}
 	else if (incoming == eutranRrcSap_[IN_GATE])
@@ -506,7 +515,6 @@ void LtePdcpRrcBase::handleMessage(cMessage* msg)
 	}
 	else
 	{
-		EV<<"Incoming: else"<<endl;
 		toDataPort(pkt);
 	}
 	return;

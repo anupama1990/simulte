@@ -13,6 +13,7 @@
 #include <vector>
 #include "apps/alert/AlertPacket_m.h"
 Define_Module(LtePdcpRrcUeD2D);
+using namespace inet;
 void LtePdcpRrcUeD2D::initialize(int stage)
 {
 	EV << "LtePdcpRrcUeD2D::initialize() - stage " << stage << endl;
@@ -54,22 +55,19 @@ MacNodeId LtePdcpRrcUeD2D::getDestId(inet::Ptr<FlowControlInfo> lteInfo)
 }
 
 /*
- * Upper Layer handlers
- */
+ * Upper Layer handlers - INET::Packet
+ *
+ *
+ *
+ *
+ **/
+
 void LtePdcpRrcUeD2D::fromDataPort(cPacket *pktAux)
 {
-	EV<<"LtePdcpRrcUeD2D::fromDataPort: "<<pktAux->getName()<<endl;
+	EV<<"LtePdcpRrcUeD2D::fromDataPort received packet: "<<pktAux->getName()<<endl;
 
-	emit(receivedPacketFromUpperLayer, pktAux);
+	auto pkt = check_and_cast<inet::Packet*>(pktAux);
 
-	// Control Informations
-	auto pkt = check_and_cast<Packet *>(pktAux);
-	auto lteInfo = pkt->getTagForUpdate<FlowControlInfo>();
-	setTrafficInformation(pkt, lteInfo);
-	headerCompress(pkt);
-
-	// get destination info
-	Ipv4Address destAddr = Ipv4Address(lteInfo->getDstAddr());
 	MacNodeId destId;
 	if(strcmp(pkt->getName(), "Alert") == 0)
 	{
@@ -85,11 +83,9 @@ void LtePdcpRrcUeD2D::fromDataPort(cPacket *pktAux)
 		ipBased_=false;
 		retrievedCAMId = retrievedCAMId+1;
 	}
-	// the direction of the incoming connection is a D2D_MULTI one if the application is of the same type,
-	// else the direction will be selected according to the current status of the UE, i.e. D2D or UL
+	//Start of IP pipeline
 	if(ipBased_)
 	{
-
 		auto ipInfo = pkt->getTagForUpdate<FlowControlInfo>();
 		ipInfo->setIpBased(true);
 
@@ -116,8 +112,7 @@ void LtePdcpRrcUeD2D::fromDataPort(cPacket *pktAux)
 
 		else
 		{
-			// FlowControlInfoNonIp* nonIpInfo = check_and_cast<FlowControlInfoNonIp*>(pkt->removeControlInfo());
-			// setTrafficInformation(pkt, nonIpInfo);
+
 			if (binder_->getMacNodeId(destAddr) == 0)
 			{
 				EV << NOW << " LtePdcpRrcUeD2D::fromDataIn - Destination " << destAddr << " has left the simulation. Delete packet." << endl;
@@ -156,11 +151,9 @@ void LtePdcpRrcUeD2D::fromDataPort(cPacket *pktAux)
 		}
 		// Cid Request
 		EV << NOW << " LtePdcpRrcUeD2D : Received CID request for Traffic [ " << "Source: "
-				<< Ipv4Address(lteInfo->getSrcAddr()) << "@" << lteInfo->getSrcPort()
-				<< " Destination: " << destAddr << "@" << lteInfo->getDstPort()
-				<< " , Direction: " << dirToA((Direction)lteInfo->getDirection()) << " ]\n";
-
-
+				<< Ipv4Address(ipInfo->getSrcAddr()) << "@" << ipInfo->getSrcPort()
+				<< " Destination: " << destAddr << "@" << ipInfo->getDstPort()
+				<< " , Direction: " << dirToA((Direction)ipInfo->getDirection()) << " ]\n";
 
 		if ((mylcid = ht_->find_entry(ipInfo->getSrcAddr(), ipInfo->getDstAddr(),
 				ipInfo->getSrcPort(), ipInfo->getDstPort(), ipInfo->getDirection())) == 0xFFFF)
@@ -189,10 +182,6 @@ void LtePdcpRrcUeD2D::fromDataPort(cPacket *pktAux)
 		ipInfo->setPriority(1); // Warning messages have higher priority
 		ipInfo->setTraffic(5);
 		ipInfo->setPktId(retrievedPktId);
-		EV<<"Retrieved packetId: "<<retrievedPktId<<endl;
-
-
-
 
 		// set some flow-related info
 		ipInfo->setLcid(mylcid);
@@ -224,14 +213,15 @@ void LtePdcpRrcUeD2D::fromDataPort(cPacket *pktAux)
 			headerLength = 1;
 			break;
 		default:
-			throw cRuntimeError("LtePdcpRrcUeD2D::fromDataport(): invalid RlcType %d", lteInfo->getRlcType());
+			throw cRuntimeError("LtePdcpRrcUeD2D::fromDataport(): invalid RlcType %d", ipInfo->getRlcType());
 			portName = "undefined";
 			gate = nullptr;
 			headerLength = 1;
 		}
 
 		// PDCP Packet creation
-		auto pdcpPkt = makeShared<LtePdcpPdu>();
+
+		auto pdcpPkt=makeShared<LtePdcpPdu>();
 		pdcpPkt->setChunkLength(B(headerLength));
 		pkt->trim();
 		pkt->insertAtFront(pdcpPkt);
@@ -254,9 +244,10 @@ void LtePdcpRrcUeD2D::fromDataPort(cPacket *pktAux)
 	{
 		binder_->BroadcastUeInfo.clear();
 		// NonIp flow
-		auto nonIpInfo = pkt->getTagForUpdate<FlowControlInfoNonIp>();
 
-		setTrafficInformation(pkt, nonIpInfo);
+		auto nonIpInfo = pkt->getTagForUpdate<FlowControlInfo>();
+
+		// setTrafficInformation(pkt, nonIpInfo);
 		long dstAddr = nonIpInfo->getDstAddr();
 		destId = binder_->getMacNodeId(dstAddr);
 
@@ -289,6 +280,8 @@ void LtePdcpRrcUeD2D::fromDataPort(cPacket *pktAux)
 		nonIpInfo->setPriority(2); //CAMS have lower priority
 		nonIpInfo->setTraffic(4);
 		nonIpInfo->setCAMId(retrievedCAMId);
+		nonIpInfo->setRlcType(UM);
+
 		if (nonIpInfo->getDirection() == D2D)
 			nonIpInfo->setDestId(destId);
 		else if (nonIpInfo->getDirection() == D2D_MULTI)
@@ -302,8 +295,8 @@ void LtePdcpRrcUeD2D::fromDataPort(cPacket *pktAux)
 			int k = 0;
 
 			MacNodeId sourceId = nodeId_;
-			EV<<"Source vehicle: "<<sourceId<<endl;
-			EV<<"UE list: "<<ueList->size()<<endl;
+			EV<<"Source vehicle Id: "<<sourceId<<endl;
+
 
 			if (ueList->size()!=0)
 			{
@@ -325,22 +318,19 @@ void LtePdcpRrcUeD2D::fromDataPort(cPacket *pktAux)
 
 			int k1= ueCoords.size();
 
-			EV<<"Number of UEs in simulation: "<<ueCoords.size()<<endl;
+			EV<<"Number of vehicle UEs in simulation: "<<ueCoords.size()<<endl;
 			std::map<MacNodeId,inet::Coord>::iterator itb = binder_->BroadcastUeInfo.begin();
-			EV<<"BroadcastUeInfo size: "<<binder_->BroadcastUeInfo.size()<<endl;
+
 			inet::Coord sourceCoord =binder_->BroadcastUeInfo.find(sourceId)->second;
-			EV<<"Source coordinates: "<<sourceCoord<<endl;
+			EV<<"Source vehicle coordinates: "<<sourceCoord<<endl;
 
 			for(; itb != binder_->BroadcastUeInfo.end(); ++itb)
 			{
 				distance = itb->second.distance(sourceCoord);
 
-				EV<<"Distance: "<<distance<<endl;
-				EV<<"Connected: "<<binder_->isNodeRegisteredInSimlation()<<endl;
-
 				if((distance !=0 && distance<=100) && binder_->isNodeRegisteredInSimlation()==true)
 				{
-					EV<<"Sensing neighbours"<<endl;
+					EV<<"Detecting neighbouring vehicle UEs ..."<<endl;
 					MacNodeId ueid = itb->first;
 					binder_->BroadcastUeInfo[ueid]=itb->second;
 
@@ -349,24 +339,24 @@ void LtePdcpRrcUeD2D::fromDataPort(cPacket *pktAux)
 
 				else if (distance ==0 || distance > 100)
 				{
-					EV<<"EGO vehicle itself"<<endl;
+					EV<<"No neighbouring vehicle UEs detected"<<endl;
 					//binder_->BroadcastUeInfo.erase(itb);
 					nonIpInfo->setDestId(nodeId_);
 
 				}
 				else
 				{
-					EV<<"distance: "<<distance <<endl;
+					EV<<"Distance: "<<distance <<endl;
 					//throw cRuntimeError("Invalid nodes in the simulation");
 				}
 
 			}
 
-			EV<<"BroadcastUeInfo size final : "<<binder_->BroadcastUeInfo.size()<<endl;
+			EV<<"Number of Broadcast receivers detected: "<<binder_->BroadcastUeInfo.size()<<endl;
 			std::map<MacNodeId,inet::Coord>::iterator itf = binder_->BroadcastUeInfo.begin();
 			for(; itf != binder_->BroadcastUeInfo.end(); ++itf)
 			{
-				EV<<"Chosen UE recipients: "<<"NodeId: "<<itf->first<<"Coordinates: "<<itf->second<<endl;
+				EV<<"Chosen vehicle UE recipients: "<<"NodeId: "<<itf->first<<"Coordinates: "<<itf->second<<endl;
 				binder_->addBroadcastUeList(itf->first, itf->second);
 			}
 
@@ -397,16 +387,19 @@ void LtePdcpRrcUeD2D::fromDataPort(cPacket *pktAux)
 			headerLength = 1;
 			break;
 		default:
-			throw cRuntimeError("LtePdcpRrcUeD2D::fromDataport(): invalid RlcType %d", lteInfo->getRlcType());
+			throw cRuntimeError("LtePdcpRrcUeD2D::fromDataport(): invalid RlcType %d", nonIpInfo->getRlcType());
 			portName = "undefined";
 			gate = nullptr;
 			headerLength = 1;
 		}
 
 		// PDCP Packet creation
-		 cMessage* dataArrival = new cMessage("Data Arrival");
+		cMessage* dataArrival = new cMessage("Data Arrival");
 		auto pdcpPkt = makeShared<LtePdcpPdu>();
+
 		pdcpPkt->setChunkLength(B(headerLength));
+		pdcpPkt->addTagIfAbsent<FlowControlInfo>();
+
 		pkt->trim();
 		pkt->insertAtFront(pdcpPkt);
 
@@ -417,11 +410,13 @@ void LtePdcpRrcUeD2D::fromDataPort(cPacket *pktAux)
 		EV << "LtePdcp : Sending packet " << pkt->getName() << " on port "
 				<< portName << std::endl;
 
-		pkt->addTagIfAbsent<PacketProtocolTag>()->setProtocol(&LteProtocol::pdcp);
+
 
 		// Send message
 		setDataArrivalStatus(true);
-		send(pkt, gate);
+		send(pkt, umSap_[OUT_GATE]);
+
+		EV<<"Informing control plane about GeoNet packet"<<endl;
 		send(dataArrival,control_OUT);
 		emit(sentPacketToLowerLayer, pkt);
 	}
@@ -438,6 +433,12 @@ void LtePdcpRrcUeD2D::fromDataPort(cPacket *pktAux)
 
 void LtePdcpRrcUeD2D::handleMessage(cMessage* msg)
 {
+
+	/*if (strcmp(msg->getName(), "CAMPacket") == 0)
+    {
+        Packet* pkt = check_and_cast<Packet *>(msg);
+        fromDataPort(pkt);
+    }*/
 	cPacket* pkt = check_and_cast<cPacket *>(msg);
 
 	// check whether the message is a notification for mode switch
@@ -460,6 +461,7 @@ void LtePdcpRrcUeD2D::handleMessage(cMessage* msg)
 		delete pkt;
 		emit(sentPacketToUpperLayer, pkt);
 	}
+
 	else
 	{
 		LtePdcpRrcBase::handleMessage(msg);
