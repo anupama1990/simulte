@@ -11,49 +11,48 @@
 #define _LTE_AIRPHYENB_H_
 
 #include "stack/phy/layer/LtePhyBase.h"
-
 class DasFilter;
 class LteFeedbackPkt;
+class SidelinkResourceAllocation;
 
-class SIMULTE_API LtePhyEnb : public LtePhyBase
+class LtePhyEnb : public LtePhyBase
 {
     friend class DasFilter;
 
-  protected:
+protected:
     /** Broadcast messages interval (equal to updatePos interval for mobility) */
     double bdcUpdateInterval_;
-
+    LteAirFrame* sciframe;
     /** Self message to trigger broadcast message sending for handover purposes */
-    omnetpp::cMessage *bdcStarter_;
-
+    /**
+     * Getter for the Das Filter
+     */
+    DasFilter* getDasFilter();
     /**
      * Pointer to the DAS Filter: used to call das function
      * when receiving broadcasts and to retrieve physical
      * antenna properties on packet reception
      */
     DasFilter* das_;
+    // Feedback computation for PisaPhy
+    LteFeedbackComputation* getFeedbackComputationFromName(std::string name, ParameterMap& params);
+    cMessage *bdcStarter_;
     //Used for PisaPhy feedback generator
     LteFeedbackDoubleVector fb_;
 
     virtual void initialize(int stage);
-
-    virtual void handleSelfMessage(omnetpp::cMessage *msg);
-    virtual void handleAirFrame(omnetpp::cMessage* msg);
+    virtual void handleSelfMessage(cMessage *msg);
+    virtual void handleAirFrame(cMessage* msg);
     bool handleControlPkt(UserControlInfo* lteinfo, LteAirFrame* frame);
     void handleFeedbackPkt(UserControlInfo* lteinfo, LteAirFrame* frame);
     virtual void requestFeedback(UserControlInfo* lteinfo, LteAirFrame* frame, inet::Packet* pkt);
-    /**
-     * Getter for the Das Filter
-     */
-    DasFilter* getDasFilter();
-    // Feedback computation for PisaPhy
-    LteFeedbackComputation* getFeedbackComputationFromName(std::string name, ParameterMap& params);
     void initializeFeedbackComputation();
 
-  public:
+public:
     LtePhyEnb();
     virtual ~LtePhyEnb();
 
+    //        void setMicroTxPower();
 };
 
 #endif  /* _LTE_AIRPHYENB_H_ */

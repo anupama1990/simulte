@@ -11,49 +11,63 @@
 #define _LTE_AIRPHYUED2D_H_
 
 #include "stack/phy/layer/LtePhyUe.h"
+#include "stack/phy/resources/SidelinkResourceAllocation.h"
+#include "stack/phy/packet/SidelinkControlInformation_m.h"
+#include "common/LteCommon.h"
+#include "stack/phy/layer/LtePhyEnbD2D.h"
+#include "control/packet/RRCStateChange_m.h"
 
-class SIMULTE_API LtePhyUeD2D : public LtePhyUe
+
+class LtePhyUeD2D : public LtePhyUe
 {
-  protected:
 
-    // D2D Tx Power
-    double d2dTxPower_;
+protected:
+	LteAirFrame* sciframe;
+	LteAirFrame* frame;
+	UserControlInfo* lteInfo;
+	LtePhyEnbD2D* enb;
+	LteSidelinkGrant* sciGrant_;
+	cMessage* d2dDecodingTimer_;
 
-    /*
-     * Capture Effect for D2D Multicast communications
-     */
-    bool d2dMulticastEnableCaptureEffect_;
-    double nearestDistance_;
-    std::vector<double> bestRsrpVector_;
-    double bestRsrpMean_;
-    std::vector<LteAirFrame*> d2dReceivedFrames_; // airframes received in the current TTI. Only one will be decoded
-    omnetpp::cMessage* d2dDecodingTimer_;                  // timer for triggering decoding at the end of the TTI. Started
-                                                  // when the first airframe is received
-    void storeAirFrame(LteAirFrame* newFrame);
-    LteAirFrame* extractAirFrame();
-    void decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteInfo);
-    // ---------------------------------------------------------------- //
+	// D2D Tx Power
+	double d2dTxPower_;
+	bool halfDuplexError;
+	bool receivedPacket;
+	bool d2dMulticastEnableCaptureEffect_;
+	double nearestDistance_;
+	double bestRsrpMean_;
+	bool frameSent;
 
-    virtual void initialize(int stage);
-    virtual void finish();
-    virtual void handleAirFrame(omnetpp::cMessage* msg);
-    virtual void handleUpperMessage(omnetpp::cMessage* msg);
-    virtual void handleSelfMessage(omnetpp::cMessage *msg);
+	std::vector<std::tuple<double, int, int>> optimalCSRs;
+	std::vector<LteAirFrame*> d2dReceivedFrames_;
+	std::vector<double> rsrpVector;
+	std::vector<double> bestRsrpVector_;
+	simsignal_t subchannelsUsed;
+	void storeAirFrame(LteAirFrame* newFrame);
+	LteAirFrame* extractAirFrame();
+	void decodeAirFrame(LteAirFrame* frame, UserControlInfo* lteInfo);
+	virtual void initialize(int stage);
+	virtual void finish();
+	virtual void handleAirFrame(cMessage* msg);
+	virtual void handleUpperMessage(cMessage* msg);
+	virtual void handleSelfMessage(cMessage *msg);
+	virtual void triggerHandover();
+	virtual void doHandover();
 
-    virtual void triggerHandover();
-    virtual void doHandover();
+public:
+	LtePhyUeD2D();
+	virtual ~LtePhyUeD2D();
 
-  public:
-    LtePhyUeD2D();
-    virtual ~LtePhyUeD2D();
+	virtual void sendFeedback(LteFeedbackDoubleVector fbDl, LteFeedbackDoubleVector fbUl, FeedbackRequest req);
+	virtual double getTxPwr(Direction dir = UNKNOWN_DIRECTION)
+	{
+		if (dir == D2D)
+			return d2dTxPower_;
+		return txPower_;
+	}
 
-    virtual void sendFeedback(LteFeedbackDoubleVector fbDl, LteFeedbackDoubleVector fbUl, FeedbackRequest req);
-    virtual double getTxPwr(Direction dir = UNKNOWN_DIRECTION)
-    {
-        if (dir == D2D)
-            return d2dTxPower_;
-        return txPower_;
-    }
+
+
 };
 
 #endif  /* _LTE_AIRPHYUED2D_H_ */

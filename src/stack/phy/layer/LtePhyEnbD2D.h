@@ -12,21 +12,26 @@
 
 #include "stack/phy/layer/LtePhyEnb.h"
 
-class SIMULTE_API LtePhyEnbD2D : public LtePhyEnb
+#include "stack/phy/resources/SidelinkResourceAllocation.h"
+#include "stack/phy/packet/SidelinkControlInformation_m.h"
+
+class LtePhyEnbD2D : public LtePhyEnb
 {
     friend class DasFilter;
 
     bool enableD2DCqiReporting_;
 
-  protected:
+protected:
+    MacNodeId ueId;
+    virtual void initialize(int stage);
+    virtual void requestFeedback(UserControlInfo* lteinfo, LteAirFrame* frame, Packet* pkt);
+    virtual void handleAirFrame(cMessage* msg);
 
-    virtual void initialize(int stage) override;
-    virtual void requestFeedback(UserControlInfo* lteinfo, LteAirFrame* frame, inet::Packet * pkt) override;
-    virtual void handleAirFrame(omnetpp::cMessage* msg) override;
-
-  public:
+public:
+    LtePhyEnbD2D();
     virtual ~LtePhyEnbD2D();
-
+    virtual void handleUpperMessage(cMessage* msg);
 };
 
 #endif  /* _LTE_AIRPHYENBD2D_H_ */
+

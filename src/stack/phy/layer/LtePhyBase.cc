@@ -175,8 +175,9 @@ void LtePhyBase::updateDisplayString()
 
 void LtePhyBase::sendBroadcast(LteAirFrame *airFrame)
 {
-    // delegate the ChannelControl to send the airframe
-    sendToChannel(airFrame);
+
+		Enter_Method("LtePhyBase::sendBroadcast");
+		sendToChannel(airFrame);
 }
 
 LteAmc *LtePhyBase::getAmcModule(MacNodeId id)
@@ -266,9 +267,17 @@ void LtePhyBase::sendUnicast(LteAirFrame *frame)
 void LtePhyBase::sendUpperPackets(cMessage* msg)
 {
     // Send message
+
     send(msg,upperGateOut_);
 
 }
+
+void LtePhyBase::deleteModule(){
+    cancelAndDelete(ttiTick_);
+    cSimpleModule::deleteModule();
+}
+
+
 
 int LtePhyBase::getReceiverGateIndex(const omnetpp::cModule *receiver) const
 {

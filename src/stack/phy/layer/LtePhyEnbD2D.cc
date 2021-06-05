@@ -11,12 +11,15 @@
 #include "stack/phy/packet/LteFeedbackPkt.h"
 #include "common/LteCommon.h"
 #include "stack/phy/das/DasFilter.h"
-
+#include "stack/mac/packet/SPSResourcePoolMode3.h"
+#include "stack/mac/packet/DataArrival.h"
 Define_Module(LtePhyEnbD2D);
 
 using namespace omnetpp;
 using namespace inet;
-
+LtePhyEnbD2D::LtePhyEnbD2D()
+{
+}
 LtePhyEnbD2D::~LtePhyEnbD2D()
 {
 }
@@ -157,6 +160,15 @@ void LtePhyEnbD2D::handleAirFrame(cMessage* msg)
         return;
     }
 
+    if (lteInfo->getFrameType() == DATAARRIVAL)
+       {
+           DataArrival* datapkt = check_and_cast<DataArrival*>(frame->decapsulate());
+           EV<<"Source id: "<<lteInfo->getSourceId()<<endl;
+           datapkt->setControlInfo(lteInfo);
+           send(datapkt,upperGateOut_);
+           return;
+       }
+
     // Check if the frame is for us ( MacNodeId matches or - if this is a multicast communication - enrolled in multicast group)
     if (lteInfo->getDestId() != nodeId_)
     {
@@ -266,4 +278,52 @@ void LtePhyEnbD2D::handleAirFrame(cMessage* msg)
     if (getEnvir()->isGUI())
         updateDisplayString();
 }
+
+
+void LtePhyEnbD2D::handleUpperMessage(cMessage* msg)
+{
+    if(strcmp(msg->getName(), "LteMode3Grant")== 0)
+    {
+        //LteSidelinkGrant* grant = check_and_cast<LteSidelinkGrant*>(msg);
+
+        /*SidelinkResourceAllocation* sra = check_and_cast<SidelinkResourceAllocation*>(getParentModule()->getSubmodule("mode3"));
+
+        sciframe = sra->createSCIMessage(msg,grant);
+        EV<<"LtePhyEnbD2D::handleUpperMessage received sidelink grant"<<grant->getTransmitBlockSize()<<endl;
+        sra->handleUpperMessage(grant);
+        //SCI
+        UserControlInfo* uinfo = check_and_cast<UserControlInfo*>(sciframe->removeControlInfo());
+
+        uinfo->setSourceId(nodeId_);
+        uinfo->setDestId(connectedNodeId_);
+        EV<<"sender module: "<< connectedNodeId_<<endl;
+        sciframe->setControlInfo(uinfo);
+        sciframe->setSchedulingPriority(airFramePriority_);
+        OmnetId destOmnetId = binder_->getOmnetId(connectedNodeId_);
+        sendUnicast(sciframe);*/
+        return;
+    }
+
+    if(strcmp(msg->getName(), "CSRMode3")== 0)
+    {
+
+        SPSResourcePoolMode3* csr = check_and_cast<SPSResourcePoolMode3*> (msg);
+        UserControlInfo* uinfo = new UserControlInfo();
+        LteAirFrame* frame = new LteAirFrame("CSRMode3");
+        uinfo->setSourceId(nodeId_);
+        uinfo->setDestId(csr->getDestId());
+        uinfo->setFrameType(CSRPKT);
+        uinfo->setIsCorruptible(false);
+
+        frame->encapsulate(check_and_cast<cPacket*>(csr));
+        frame->setDuration(TTI);
+        frame->setControlInfo(uinfo);
+        frame->setSchedulingPriority(airFramePriority_);
+        OmnetId destOmnetId = binder_->getOmnetId(csr->getDestId());
+        sendUnicast(frame);
+
+        return;
+    }
+}
+
 
