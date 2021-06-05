@@ -9,7 +9,7 @@
 package lte.corenetwork.lteip;
 
 import lte.corenetwork.lteip.INetworkLayer2lte;
-
+import inet.networklayer.ipv4.Ipv4RoutingTable;
 //
 // IP2lte module performs as a bridge between the network layer and the LTE protocol stack
 // It has a slightly different behavior in the UE rather than in the eNB
