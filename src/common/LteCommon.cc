@@ -36,16 +36,18 @@ const std::string lteTrafficClassToA(LteTrafficClass type)
 {
     switch (type)
     {
-        case CONVERSATIONAL:
-            return "CONVERSATIONAL";
-        case STREAMING:
-            return "STREAMING";
-        case INTERACTIVE:
-            return "INTERACTIVE";
-        case BACKGROUND:
-            return "BACKGROUND";
-        default:
-            return "UNKNOWN_TRAFFIC_TYPE";
+    case CONVERSATIONAL:
+        return "CONVERSATIONAL";
+    case STREAMING:
+        return "STREAMING";
+    case INTERACTIVE:
+        return "INTERACTIVE";
+    case BACKGROUND:
+        return "BACKGROUND";
+    case CAM:
+        return "CAM";
+    default:
+        return "UNKNOWN_TRAFFIC_TYPE";
     }
 }
 
@@ -66,14 +68,14 @@ const std::string rlcTypeToA(LteRlcType type)
 {
     switch (type)
     {
-        case TM:
-            return "tm";
-        case UM:
-            return "um";
-        case AM:
-            return "am";
-        default:
-            return "UNKNOWN_RLC_TYPE";
+    case TM:
+        return "tm";
+    case UM:
+        return "um";
+    case AM:
+        return "am";
+    default:
+        return "UNKNOWN_RLC_TYPE";
     }
 }
 
@@ -100,16 +102,16 @@ const std::string dirToA(Direction dir)
 {
     switch (dir)
     {
-        case DL:
-            return "DL";
-        case UL:
-            return "UL";
-        case D2D:
-            return "D2D";
-        case D2D_MULTI:
-            return "D2D_MULTI";
-        default:
-            return "Unrecognized";
+    case DL:
+        return "DL";
+    case UL:
+        return "UL";
+    case D2D:
+        return "D2D";
+    case D2D_MULTI:
+        return "D2D_MULTI";
+    default:
+        return "Unrecognized";
     }
 }
 
@@ -117,24 +119,35 @@ const std::string d2dModeToA(LteD2DMode mode)
 {
     switch (mode)
     {
-        case IM:
-            return "IM";
-        case DM:
-            return "DM";
-        default:
-            return "Unrecognized";
+    case IM:
+        return "IM";
+    case DM:
+        return "DM";
+    default:
+        return "Unrecognized";
     }
 }
 
-
+const std::string LteSidelinkModeToA(LteSidelinkMode mode)
+{
+    switch (mode)
+    {
+    case MODE3:
+        return "Mode 3";
+    case MODE4:
+        return "Mode 4";
+    default:
+        return "Unrecognized sidelink mode";
+    }
+}
 const std::string allocationTypeToA(RbAllocationType type)
 {
     switch (type)
     {
-        case TYPE2_DISTRIBUTED:
-            return "distributed";
-        case TYPE2_LOCALIZED:
-            return "localized";
+    case TYPE2_DISTRIBUTED:
+        return "distributed";
+    case TYPE2_LOCALIZED:
+        return "localized";
     }
     return "Unrecognized";
 }
@@ -143,12 +156,12 @@ const std::string modToA(LteMod mod)
 {
     switch (mod)
     {
-        case _QPSK:
-            return "QPSK";
-        case _16QAM:
-            return "16-QAM";
-        case _64QAM:
-            return "64-QAM";
+    case _QPSK:
+        return "QPSK";
+    case _16QAM:
+        return "16-QAM";
+    case _64QAM:
+        return "64-QAM";
     }
     return "UNKNOWN";
 }
@@ -157,10 +170,10 @@ const std::string periodicityToA(FbPeriodicity per)
 {
     switch (per)
     {
-        case PERIODIC:
-            return "PERIODIC";
-        case APERIODIC:
-            return "APERIODIC";
+    case PERIODIC:
+        return "PERIODIC";
+    case APERIODIC:
+        return "APERIODIC";
     }
     return "UNKNOWN";
 }
@@ -393,12 +406,12 @@ const std::string planeToA(Plane p)
 {
     switch (p)
     {
-        case MAIN_PLANE:
-            return "MAIN_PLANE";
-        case MU_MIMO_PLANE:
-            return "MU_MIMO_PLANE";
-        default:
-            return "UNKNOWN PLANE";
+    case MAIN_PLANE:
+        return "MAIN_PLANE";
+    case MU_MIMO_PLANE:
+        return "MU_MIMO_PLANE";
+    default:
+        return "UNKNOWN PLANE";
     }
 }
 
@@ -418,14 +431,14 @@ const std::string grantTypeToA(GrantType gType)
 {
     switch (gType)
     {
-        case FITALL:
-            return "FITALL";
-        case FIXED_:
-            return "FIXED";
-        case URGENT:
-            return "URGENT";
-        default:
-            return "UNKNOWN_GRANT_TYPE";
+    case FITALL:
+        return "FITALL";
+    case FIXED_:
+        return "FIXED";
+    case URGENT:
+        return "URGENT";
+    default:
+        return "UNKNOWN_GRANT_TYPE";
     }
 }
 
@@ -485,14 +498,14 @@ MacCid ctrlInfoToMacCid(LteControlInfo * info)
 
     switch (dir)
     {
-        case DL: case D2D:
-            ueId = info->getDestId();
-            break;
-        case UL: case D2D_MULTI:  // D2D_MULTI goes here, since the destination id is meaningless in that context
-            ueId = info->getSourceId();
-            break;
-        default:
-            throw cRuntimeError("ctrlInfoToMacCid(): unknown direction %d", dir);
+    case DL: case D2D:
+        ueId = info->getDestId();
+        break;
+    case UL: case D2D_MULTI:  // D2D_MULTI goes here, since the destination id is meaningless in that context
+        ueId = info->getSourceId();
+        break;
+    default:
+        throw cRuntimeError("ctrlInfoToMacCid(): unknown direction %d", dir);
     }
     EV << "ctrlInfoToMacCid - dir[" << dir << "] - ueId[" << ueId << "] - lcid[" << lcid << "]" << endl;
     return idToMacCid(ueId, lcid);
@@ -516,14 +529,14 @@ MacNodeId ctrlInfoToUeId(LteControlInfo * info)
 
     switch (dir)
     {
-        case DL: case D2D:
-            ueId = info->getDestId();
-            break;
-        case UL: case D2D_MULTI: // D2D_MULTI goes here, since the destination id is meaningless in that context
-            ueId = info->getSourceId();
-            break;
-        default:
-            throw cRuntimeError("ctrlInfoToMacCid - unknown direction %d", dir);
+    case DL: case D2D:
+        ueId = info->getDestId();
+        break;
+    case UL: case D2D_MULTI: // D2D_MULTI goes here, since the destination id is meaningless in that context
+        ueId = info->getSourceId();
+        break;
+    default:
+        throw cRuntimeError("ctrlInfoToMacCid - unknown direction %d", dir);
     }
     return ueId;
 }
@@ -544,6 +557,7 @@ LteCellInfo* getCellInfo(MacNodeId nodeId)
     // Check if nodeId is a relay, if nodeId is a eNodeB
     // function GetNextHop returns nodeId
     // TODO change this behavior (its not needed unless we don't implement relays)
+    EV<<"Node Id: "<<nodeId<<endl;
     MacNodeId id = temp->getNextHop(nodeId);
     OmnetId omnetid = temp->getOmnetId(id);
     omnetpp::cModule* module = getSimulation()->getModule(omnetid);
@@ -554,20 +568,20 @@ cModule* getMacByMacNodeId(MacNodeId nodeId)
 {
     // UE might have left the simulation, return NULL in this case
     // since we do not have a MAC-Module anymore
-	int id = getBinder()->getOmnetId(nodeId);
-	if (id == 0){
-		return nullptr;
-	}
-	// TODO fix for relays
-	return (getSimulation()->getModule(getBinder()->getOmnetId(nodeId))->getSubmodule("lteNic")->getSubmodule("mac"));
+    int id = getBinder()->getOmnetId(nodeId);
+    if (id == 0){
+        return nullptr;
+    }
+    // TODO fix for relays
+    return (getSimulation()->getModule(getBinder()->getOmnetId(nodeId))->getSubmodule("lteNic")->getSubmodule("mac"));
 }
 
 cModule* getRlcByMacNodeId(MacNodeId nodeId, LteRlcType rlcType)
 {
-	cModule* module = getMacByMacNodeId(nodeId);
-	if(module == nullptr){
-		return nullptr;
-	}
+    cModule* module = getMacByMacNodeId(nodeId);
+    if(module == nullptr){
+        return nullptr;
+    }
     return getMacByMacNodeId(nodeId)->getParentModule()->getSubmodule("rlc")->getSubmodule(rlcTypeToA(rlcType).c_str());
 }
 
@@ -687,9 +701,9 @@ void initializeAllChannels(cModule *mod)
         cGate* gate = *i;
         if (gate->getChannel() != nullptr)
         {
-                if(!gate->getChannel()->initialized()){
-                        gate->getChannel()->callInitialize();
-                }
+            if(!gate->getChannel()->initialized()){
+                gate->getChannel()->callInitialize();
+            }
         }
     }
 
@@ -711,7 +725,7 @@ void removeAllSimuLteTags(inet::Packet *pkt) {
     /*if (c4)
         delete c4;*/
     auto c5 = pkt->removeTagIfPresent<UserControlInfo>();
-/*    if (c5)
+    /*    if (c5)
         delete c5;*/
     auto c1 = pkt->removeTagIfPresent<LteControlInfo>();
     /*if (c1)
