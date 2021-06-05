@@ -14,11 +14,9 @@
 // 
 
 #include "SidelinkConfiguration.h"
-
 #include "stack/mac/buffer/harq/LteHarqBufferRx.h"
 #include "stack/mac/buffer/LteMacQueue.h"
 #include "stack/mac/buffer/harq_d2d/LteHarqBufferRxD2D.h"
-
 #include "stack/mac/scheduler/LteSchedulerUeUl.h"
 #include "stack/phy/packet/SPSResourcePool.h"
 #include "stack/phy/packet/cbr_m.h"
@@ -123,7 +121,6 @@ void SidelinkConfiguration::initialize(int stage)
 		// Get the Physical Channel reference of the node
 		ueInfo_->phy = check_and_cast<LtePhyBase*>(ueInfo_->ue->getSubmodule("lteNic")->getSubmodule("phy"));
 
-		// binder_->addUeInfo(ueInfo_);
 	}
 }
 
@@ -374,7 +371,7 @@ void SidelinkConfiguration::handleMessage(cMessage *msg)
 
 	if (strcmp(pkt->getName(), "CBR") == 0)
 	{
-		EV<<"REceived CBR message from gate: "<<incoming<<endl;
+		EV<<"Received CBR message from gate: "<<incoming<<endl;
 
 		Cbr* cbrPkt = check_and_cast<Cbr*>(pkt);
 		cbr_ = cbrPkt->getCbr();
@@ -501,12 +498,8 @@ void SidelinkConfiguration::handleMessage(cMessage *msg)
 			pkt->addTagIfAbsent<FlowControlInfo>();
 			auto  grant = makeShared<LteSidelinkGrant>();
 			pkt->insertAtFront(grant);
-			//throw cRuntimeError("Sidelink configuration");
-			//pkt->setControlInfo(lteInfo);
+
 		}
-
-
-
 
 		if (mac->getIpBased()==true)
 		{
@@ -557,53 +550,9 @@ void SidelinkConfiguration::assignGrantToData(DataArrival* pkt, std::string rrcS
 {
 	rrcCurrentState = rrcState;
 	LteMacBase* mac = dynamic_cast<LteMacBase*>(getParentModule()->getSubmodule("mac"));
-	/*
 
-
-    if(rrcState=="RRC_IDLE")
-    {
-
-        FlowControlInfoNonIp* lteInfo = check_and_cast<FlowControlInfoNonIp*>(pkt->removeControlInfo());
-        receivedTime_ = NOW;
-        EV<<"RRC State: "<<rrcState<<endl;
-
-        simtime_t elapsedTime = receivedTime_ - lteInfo->getCreationTime();
-        simtime_t duration = SimTime(lteInfo->getDuration(), SIMTIME_MS);
-        duration = duration - elapsedTime;
-        double dur = duration.dbl();
-        remainingTime_ = lteInfo->getDuration() - dur;
-
-        if (schedulingGrant_ != NULL && periodCounter_ > remainingTime_)
-        {
-            emit(grantBreakTiming, 1);
-            //delete schedulingGrant_;
-            //schedulingGrant_ = NULL;
-            mode4Grant=   macGenerateSchedulingGrant(remainingTime_, lteInfo->getPriority(), pkt->getBitLength());
-        }
-        else if (schedulingGrant_ == NULL)
-        {
-            mode4Grant= macGenerateSchedulingGrant(remainingTime_, lteInfo->getPriority(), pkt->getBitLength());
-
-        }
-        else
-        {
-            LteSidelinkGrant* mode4Grant = check_and_cast<LteSidelinkGrant*>(schedulingGrant_);
-            mode4Grant->setSpsPriority(lteInfo->getPriority());
-            // Need to get the creation time for this
-            mode4Grant->setMaximumLatency(remainingTime_);
-        }
-
-        setSidelinkGrant(mode4Grant);
-
-
-        // Need to set the size of our grant to the correct size we need to ask rlc for, i.e. for the sdu size.
-        mode4Grant->setGrantedCwBytes((MAX_CODEWORDS - currentCw_), pkt->getBitLength());
-
-        pkt->setControlInfo(lteInfo);
-    }*/
 	if(rrcState=="RRC_CONN" || rrcState=="RRC_INACTIVE")
 	{
-
 		UserControlInfo* lteInfo = check_and_cast< UserControlInfo*>(pkt->removeControlInfo());
 		receivedTime_ = NOW;
 		double elapsedTime = receivedTime_.dbl() - pkt->getCreationTime();
@@ -653,8 +602,6 @@ void SidelinkConfiguration::assignGrantToData(DataArrival* pkt, std::string rrcS
 
 }
 
-
-
 void SidelinkConfiguration::handleSelfMessage()
 {
 	//integrated with LteMacUeD2D::handleSelfMessage();
@@ -696,22 +643,10 @@ LteSidelinkGrant* SidelinkConfiguration::macHandleSps(std::vector<std::tuple<dou
 	int finalSubchannel = initialSubchannel + slGrant->getNumSubchannels(); // Is this actually one additional subchannel?
 
 	EV<<"initial subchannel: "<<initialSubchannel<<" "<<"final subchannel: "<<finalSubchannel<<endl;
-	// Emit statistic about the use of resources, i.e. the initial subchannel and it's length.
-	//emit(selectedSubchannelIndex, initialSubchannel);
-	//emit(selectedNumSubchannels, slGrant->getNumSubchannels());
 
 	// Determine the RBs on which we will send our message
 	RbMap grantedBlocks;
 	int totalGrantedBlocks = slGrant->getTotalGrantedBlocks();
-	/*for (int i=initialSubchannel;i<finalSubchannel;i++)
-	    {
-	        std::vector<Band> allocatedBands;
-	        for (Band b = i * subchannelSize_; b < (i * subchannelSize_) + subchannelSize_ ; b++)
-	        {
-	            grantedBlocks[MACRO][b] = 1;
-	            ++totalGrantedBlocks;
-	        }
-	    }*/
 
 	double startTime= slGrant->getStartTime().dbl();
 
@@ -733,8 +668,6 @@ LteSidelinkGrant* SidelinkConfiguration::macHandleSps(std::vector<std::tuple<dou
 		mod = _64QAM;
 	}
 
-
-	EV<<"totalGrantedBlocks: "<<totalGrantedBlocks<<endl;
 	setAllocatedBlocksSCIandData(totalGrantedBlocks);
 	EV<<"maxMCSPSSCH_: "<<maxMCSPSSCH_<<endl;
 
@@ -743,14 +676,13 @@ LteSidelinkGrant* SidelinkConfiguration::macHandleSps(std::vector<std::tuple<dou
 	const unsigned int* tbsVect = itbs2tbs(mod, SINGLE_ANTENNA_PORT0, 1, maxMCSPSSCH_ - i);
 	maximumCapacity_ = tbsVect[totalGrantedBlocks-1];
 
-	EV<<"maximum capacity: "<< maximumCapacity_<<" CW: "<<currentCw_<<endl;
+
 	slGrant->setGrantedCwBytes(currentCw_, maximumCapacity_);
 	// Simply flips the codeword.
 	currentCw_ = MAX_CODEWORDS - currentCw_;
-	EV<<"maximum capacity 2: "<< maximumCapacity_<<" CW: "<<currentCw_<<endl;
+
 	periodCounter_= slGrant->getPeriod();
 	expirationCounter_= (slGrant->getResourceReselectionCounter() * periodCounter_) + 1;
-
 
 	//Implement methods to store expiration counter and period counter
 	slGrant->setPeriodCounter(periodCounter_);
@@ -761,7 +693,7 @@ LteSidelinkGrant* SidelinkConfiguration::macHandleSps(std::vector<std::tuple<dou
 	EV<<"Sidelink Configuration period counter: "<<slGrant->getPeriodCounter()<<endl;
 	EV<<"Sidelink Configuration expiration counter: "<<slGrant->getExpirationCounter()<<endl;
 	EV<<"Sidelink Configuration Granted CWBytes size: "<<slGrant->getGrantedCwBytesArraySize()<<endl;
-	EV<<"Granted CW: "<<slGrant->getGrantedCwBytes(0)<<slGrant->getGrantedCwBytes(1)<<endl;
+
 	CSRs.clear();
 	return slGrant;
 
@@ -787,8 +719,6 @@ LteSidelinkGrant* SidelinkConfiguration::macGenerateSchedulingGrant(double maxim
 	{
 		phyGrant = new LteSidelinkGrant("LteMode4Grant");
 	}
-
-
 
 	// Priority is the most difficult part to figure out, for the moment I will assign it as a fixed value
 
@@ -858,12 +788,6 @@ LteSidelinkGrant* SidelinkConfiguration::macGenerateSchedulingGrant(double maxim
 
 	//cPacket* p = check_and_cast<cPacket*>(phyGrant);
 	LteMacBase* mac=check_and_cast<LteMacBase*>(getParentModule()->getSubmodule("mac"));
-	//  LteMacBase* mac=check_and_cast<LteMacBase*>(getParentModule()->getSubmodule("mac"));
-	//UserControlInfo* uinfo = new UserControlInfo();
-	//auto uinfo = makeShared<UserControlInfo>();
-
-
-	//grantpkt->setControlInfo(uinfo);
 
 	auto uinfo = pkt->addTagIfAbsent<UserControlInfo>();
 	uinfo->setSourceId(mac->getMacNodeId());
@@ -873,8 +797,6 @@ LteSidelinkGrant* SidelinkConfiguration::macGenerateSchedulingGrant(double maxim
 	pkt->insertAtBack(phyGrant);
 	mac->sendLowerPackets(pkt);
 
-	//schedulingGrant_ = slGrant;
-	//emit(grantRequest, 1);
 	emit(grantStartTime,80);
 	slGrant=phyGrant->dup();
 	setSidelinkGrant(slGrant);
@@ -892,18 +814,12 @@ void SidelinkConfiguration::flushHarqBuffers(HarqTxBuffers harqTxBuffers_, LteSi
 	// But purge them once all messages sent.
 
 	slGrant = grant;
-
-	//slGrant = dynamic_cast<LteSidelinkGrant*>(schedulingGrant_);
-
 	HarqTxBuffers::iterator it2;
 	EV<<"Harq size: "<<harqTxBuffers_.size()<<endl;
 	EV<<"Scheduling grant: "<<slGrant<<endl;
 
 	for(it2 = harqTxBuffers_.begin(); it2 != harqTxBuffers_.end(); it2++)
 	{
-		//EV<<"SidelinkConfiguration::flushHarqBuffers for: "<<it2->second->isSelected()<<endl;
-
-
 		std::unordered_map<std::string,double> cbrMap = cbrPSSCHTxConfigList_.at(currentCbrIndex_);
 		std::unordered_map<std::string,double>::const_iterator got;
 
@@ -926,7 +842,7 @@ void SidelinkConfiguration::flushHarqBuffers(HarqTxBuffers harqTxBuffers_, LteSi
 			}
 		}
 
-		//it2->second->isSelected()
+
 		if (1)
 		{
 			//throw cRuntimeError("debug 3");
@@ -1007,32 +923,6 @@ void SidelinkConfiguration::flushHarqBuffers(HarqTxBuffers harqTxBuffers_, LteSi
 						{
 							slGrant->setUserTxParams(preconfiguredTxParams_);
 						}
-
-						/*  LteSidelinkGrant* phyGrant =  slGrant;
-
-                            LteMacBase* mac=check_and_cast<LteMacBase*>(getParentModule()->getSubmodule("mac"));
-                            UserControlInfo* uinfo = new UserControlInfo();
-
-
-
-                            uinfo->setSourceId(nodeId_);
-
-                            uinfo->setDestId(mac->getMacNodeId());
-
-                            uinfo->setFrameType(GRANTPKT);
-                            uinfo->setTxNumber(1);
-                            uinfo->setDirection(D2D_MULTI);
-
-                            uinfo->setUserTxParams(preconfiguredTxParams_);
-                            uinfo->setSubchannelNumber(slGrant->getStartingSubchannel());
-                            uinfo->setSubchannelLength(slGrant->getNumSubchannels());
-                            uinfo->setGrantStartTime(slGrant->getStartTime());*/
-
-						//phyGrant->setControlInfo(uinfo);
-
-						// Send Grant to PHY layer for sci creation
-						//mac->sendLowerPackets(phyGrant);
-
 						// Send pdu to PHY layer for sending.
 						it2->second->sendSelectedDown();
 
@@ -1048,16 +938,13 @@ void SidelinkConfiguration::flushHarqBuffers(HarqTxBuffers harqTxBuffers_, LteSi
 					}
 					if (!foundValidMCS)
 					{
-						//throw cRuntimeError("debug 5");
+
 						// Never found an MCS to satisfy the requirements of the message must regenerate grant
 						//slGrant = check_and_cast<LteSidelinkGrant*>(schedulingGrant_);
 						int priority =  slGrant->getSpsPriority();
 						int latency =  slGrant->getMaximumLatency();
 						simtime_t elapsedTime = NOW - receivedTime_;
 						remainingTime_ -= elapsedTime.dbl();
-
-						//emit(grantBreakSize, pduLength);
-						//emit(maximumCapacity, mcsCapacity);
 
 						if (remainingTime_ <= 0)
 						{
@@ -1084,34 +971,6 @@ void SidelinkConfiguration::flushHarqBuffers(HarqTxBuffers harqTxBuffers_, LteSi
 			++missedTransmissions_;
 			//emit(missedTransmission, 1);
 
-			/* LteSidelinkGrant* phyGrant =  slGrant->dup();
-            phyGrant->setSpsPriority(0);
-
-
-            UserControlInfo* uinfo = new UserControlInfo();
-            uinfo->setSourceId(nodeId_);
-            uinfo->setDestId(nodeId_);
-            uinfo->setFrameType(GRANTPKT);
-            uinfo->setTxNumber(1);
-            uinfo->setDirection(D2D_MULTI);
-            uinfo->setUserTxParams(preconfiguredTxParams_);
-
-            phyGrant->setControlInfo(uinfo);*/
-			/*
-            if (missedTransmissions_ >= reselectAfter_)
-            {
-                phyGrant->setPeriod(0);
-                phyGrant->setExpiration(0);
-
-                //delete schedulingGrant_;
-                schedulingGrant_ = NULL;
-                missedTransmissions_ = 0;
-                //emit(grantBreakMissedTrans, 1);
-            }*/
-
-			// Send Grant to PHY layer for sci creation
-			/*            LteMacBase* mac = dynamic_cast<LteMacBase*>(getParentModule()->getSubmodule("mac"));
-            mac->sendLowerPackets(phyGrant);*/
 		}
 
 	}
