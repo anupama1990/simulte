@@ -168,17 +168,17 @@ public:
     virtual void handleMessage(cMessage* msg);
     virtual void finish();
 
-    virtual void handleUpperMessage(cMessage* msg);
+    virtual void handleUpperMessage(Packet* pkt);
     virtual void handleSelfMessage(cMessage *msg);
     // Helper function which prepares a frame for sending
     // Generate an SCI message corresponding to a Grant
-    virtual LteAirFrame* createSCIMessage(cMessage* msg,  LteSidelinkGrant* grant);
+    virtual LteAirFrame* createSCIMessage(cMessage* msg,  Packet* pkt);
     // Compute Candidate Single Subframe Resources which the MAC layer can use for transmission
     virtual   std::vector<int> getallocationSciIndex(int subChRBStart_);
     virtual std::tuple<int,int> decodeRivValue(SidelinkControlInformation* sci, UserControlInfo* sciInfo);
     virtual LteAirFrame* prepareAirFrame(cMessage* msg, UserControlInfo* lteInfo);
     virtual void  initialiseSensingWindow();
-    virtual void computeCSRs(LteSidelinkGrant* , LteNodeType );
+    virtual void computeCSRs(Packet* , LteNodeType );
     std::vector<std::tuple<double, int, double>> selectBestRSSIs(std::vector<double> subframes, LteSidelinkGrant* &grant, double subFrame );
 
 public:
