@@ -14,6 +14,7 @@ class SPSResourcePool: public SPSResourcePool_Base
 
     std::vector<std::tuple<double, int, double>> CSRs;
     int allocatedBlocksSCIandDataPrevious;
+    LteSidelinkGrant* slGrant;
 
   public:
 
@@ -62,6 +63,15 @@ class SPSResourcePool: public SPSResourcePool_Base
     void setAllocatedBlocksScIandDataPrevious(int allocatedBlocksScIandDataPrevious)
     {
         allocatedBlocksSCIandDataPrevious = allocatedBlocksScIandDataPrevious;
+    }
+
+    void setSidelinkGrant(LteSidelinkGrant* slGrant)
+    {
+    	this->slGrant = slGrant;
+    }
+    LteSidelinkGrant* getSidelinkGrant() const
+    {
+    	return slGrant;
     }
 };
 

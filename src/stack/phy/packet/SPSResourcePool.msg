@@ -16,6 +16,7 @@
 //
 // TODO generated message class
 //
+
 packet SPSResourcePool {
 
     @customize(true);
