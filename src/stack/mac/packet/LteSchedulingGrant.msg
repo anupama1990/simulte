@@ -7,6 +7,10 @@
 // and cannot be removed from it.
 //
 
+
+//
+// TODO generated message class
+//
 import inet.common.INETDefs;
 import inet.common.packet.chunk.Chunk;
 //
@@ -30,4 +34,17 @@ class LteSchedulingGrant extends inet::FieldsChunk
     //# const UserTxParams* userTxParams;
     //# RbMap grantedBlocks;
     //#
+}
+class LteSidelinkGrant extends inet::FieldsChunk{
+    @customize(true);
+    chunkLength = inet::B(1); // TODO: size 0
+    bool periodic;
+    unsigned int period;
+    unsigned int expiration;
+       // blocks granted on all Remotes, all Bands
+    unsigned int totalGrantedBlocks;
+    // number of codewords
+    unsigned int codewords;
+    // granted bytes per codeword
+    abstract unsigned int grantedCwBytes[];
 }
