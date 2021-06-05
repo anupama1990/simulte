@@ -44,6 +44,7 @@ void X2AppClient::initialize(int stage)
 
         // set the connect port
         int connectPort = getBinder()->getX2Port(peerId);
+        EV<<"connectPort: "<<connectPort<<endl;
         par("connectPort").setIntValue(connectPort);
     }
 }

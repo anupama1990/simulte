@@ -62,7 +62,9 @@ void LteX2Manager::initialize(int stage)
             X2AppClient* client = check_and_cast<X2AppClient*>(inGate->getPathStartGate()->getOwnerModule());
 
             // get the connectAddress for the X2App client and the corresponding X2 id
+
             L3Address addr = L3AddressResolver().resolve(client->par("connectAddress").stringValue());
+            EV<<"Address: "<<client->par("connectAddress").stringValue()<<endl;
             X2NodeId peerId = getBinder()->getX2NodeId(addr.toIpv4());
 
             // bind the peerId to the output gate
