@@ -67,7 +67,7 @@ void LteDlFeedbackGenerator::initialize(int stage)
         WATCH(usePeriodic_);
         WATCH(currentTxMode_);
     }
-    else if (stage == INITSTAGE_LINK_LAYER)
+    else if (stage == 1)
     {
         EV << "DLFeedbackGenerator Stage " << stage << " nodeid: " << nodeId_
            << " init" << endl;
