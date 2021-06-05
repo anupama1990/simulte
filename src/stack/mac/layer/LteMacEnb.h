@@ -22,7 +22,7 @@ class ConflictGraph;
 
 class SIMULTE_API LteMacEnb : public LteMacBase
 {
-  protected:
+protected:
     /// Local LteCellInfo
     LteCellInfo *cellInfo_;
 
@@ -70,6 +70,16 @@ class SIMULTE_API LteMacEnb : public LteMacBase
 
     /// Number of RB Ul
     int numRbUl_;
+    unsigned char currentHarq_;
+
+    // perodic grant handling
+    unsigned int periodCounter_;
+    unsigned int expirationCounter_;
+
+    // number of MAC SDUs requested to the RLC
+    int requestedSdus_;
+
+    bool debugHarq_;
 
     /**
      * Reads MAC parameters for eNb and performs initialization.
@@ -165,7 +175,7 @@ class SIMULTE_API LteMacEnb : public LteMacBase
      */
     virtual void flushHarqBuffers();
 
-  public:
+public:
 
     LteMacEnb();
     virtual ~LteMacEnb();

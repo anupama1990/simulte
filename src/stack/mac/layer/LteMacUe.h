@@ -13,7 +13,7 @@
 #include "stack/mac/layer/LteMacBase.h"
 #include "stack/mac/buffer/harq/LteHarqBufferTx.h"
 #include "stack/phy/feedback/LteFeedback.h"
-
+#include "stack/mac/packet/LteSidelinkGrant.h"
 class LteSchedulingGrant;
 class LteSchedulerUeUl;
 class LteBinder;
@@ -98,6 +98,7 @@ class SIMULTE_API LteMacUe : public LteMacBase
      * according to the Schedule List.
      */
     virtual int macSduRequest();
+    int macSduRequest(LteSidelinkGrant* grant, LteMacScheduleList* scheduleList_);
 
     /**
      * bufferizePacket() is called every time a packet is

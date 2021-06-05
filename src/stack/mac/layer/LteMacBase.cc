@@ -64,11 +64,12 @@ void LteMacBase::sendLowerPackets(cPacket* pkt)
 {
     EV << NOW << "LteMacBase::sendLowerPackets, Sending packet " << pkt->getName() << " on port MAC_to_PHY\n";
     // Send message
-    updateUserTxParam(pkt);
+    //updateUserTxParam(pkt);
     send(pkt,down_[OUT_GATE]);
     nrToLower_++;
     emit(sentPacketToLowerLayer, pkt);
 }
+
 
 /*
  * Ue with nodeId left the simulation. Ensure that no
@@ -165,6 +166,23 @@ void LteMacBase::fromPhy(cPacket *pktAux)
         EV << NOW << "Mac::fromPhy: node " << nodeId_ << " Received RAC packet" << endl;
         macHandleRac(pkt);
     }
+    else if (userInfo->getFrameType() == SCIPKT)
+        {
+           EV<<"LteMacBase receives SCIPKT"<<endl;
+           throw cRuntimeError("LteMacBase::SCIPKT");
+        }
+
+        else if (userInfo->getFrameType()==MODE3GRANTREQUEST ||userInfo->getFrameType()==DATAARRIVAL)
+        {
+            fromPhy(pkt);
+        }
+
+        else if(userInfo->getFrameType() == CSRPKT)
+        {
+            throw cRuntimeError("CSRPKT MAC");
+        }
+
+
     else
     {
         throw cRuntimeError("Unknown packet type %d", (int)userInfo->getFrameType());
@@ -344,7 +362,7 @@ void LteMacBase::initialize(int stage)
         scheduleAt(NOW + TTI, ttiTick_);
 
         /* statistics */
-        statDisplay_ = par("statDisplay");
+        //statDisplay_ = par("statDisplay");
         totalOverflowedBytes_ = 0;
         nrFromUpper_ = 0;
         nrFromLower_ = 0;
