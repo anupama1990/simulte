@@ -19,7 +19,7 @@ LteHarqUnitTxD2D::LteHarqUnitTxD2D(unsigned char acid, Codeword cw, LteMacBase *
     {
         if (dstMac_ != nodeB_)  // D2D
         {
-            macCellPacketLossD2D_ = check_and_cast<LteMacEnbD2D*>(nodeB_)->registerSignal("macCellPacketLossD2D");
+            //macCellPacketLossD2D_ = check_and_cast<LteMacEnbD2D*>(nodeB_)->registerSignal("macCellPacketLossD2D");
 
             macPacketLossD2D_ = check_and_cast<LteMacUeD2D*>(macOwner_)->registerSignal("macPacketLossD2D");
             harqErrorRateD2D_ = check_and_cast<LteMacUeD2D*>(dstMac_)->registerSignal("harqErrorRateD2D");
