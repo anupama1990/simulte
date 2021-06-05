@@ -15,6 +15,7 @@
 
 #include "AlertNonIp.h"
 #include "common/LteControlInfo.h"
+#include "common/FlowControlInfoNonIp.h"
 #include "stack/phy/packet/cbr_m.h"
 #include <omnetpp.h>
 
@@ -87,12 +88,6 @@ void AlertNonIp::handleLowerMessage(cMessage* msg)
 void AlertNonIp::handleSelfMessage(cMessage* msg)
 {
     if (!strcmp(msg->getName(), "selfSender")){
-        // Replace method
-
-        //Packet* packet = new inet::Packet("AlertNonIpPacket");
-
-        //auto alertnonip = inet::makeShared<AlertPacket>();
-
 
         AlertNonIpPacket* packet = new   AlertNonIpPacket("AlertNonIpPacket");
         packet->setTimestamp(simTime());
