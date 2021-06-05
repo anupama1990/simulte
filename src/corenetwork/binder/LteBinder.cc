@@ -56,12 +56,12 @@ void LteBinder::unregisterNode(MacNodeId id)
 	std::map<MacNodeId,inet::Coord>::iterator itb = BroadcastUeInfo.begin();
 
 	for (; position != ueList_.end(); ) // == myVector.end() means the element was not found
-			{
+	{
 		EV<<"Erasing UE information: "<<id<<" "<<(*position)->id<<endl;
 
 		if ((*position)->id==id)
 		{
-			EV<<"Erasing UE information 1: "<<id<<endl;
+
 			ueList_.erase(position);
 			setNodeRegisteredInSimlation(false);
 		}
@@ -69,7 +69,7 @@ void LteBinder::unregisterNode(MacNodeId id)
 		{
 			++position;
 		}
-			}
+	}
 
 
 
@@ -118,8 +118,8 @@ MacNodeId LteBinder::registerNode(cModule *module, LteNodeType type,
 	}
 
 	EV << "LteBinder : Assigning to module " << module->getName()
-            		   << " with OmnetId: " << module->getId() << " and MacNodeId " << macNodeId
-					   << "\n";
+            				   << " with OmnetId: " << module->getId() << " and MacNodeId " << macNodeId
+							   << "\n";
 
 	// registering new node to LteBinder
 
@@ -259,6 +259,7 @@ LteMacBase* LteBinder::getMacFromMacNodeId(MacNodeId id)
 MacNodeId LteBinder::getNextHop(MacNodeId slaveId)
 {
 	Enter_Method_Silent("getNextHop");
+
 	if (slaveId >= nextHop_.size())
 		throw cRuntimeError("LteBinder::getNextHop(): bad slave id %d", slaveId);
 	return nextHop_[slaveId];
