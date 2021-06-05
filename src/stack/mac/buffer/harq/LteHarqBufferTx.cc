@@ -25,6 +25,14 @@ LteHarqBufferTx::LteHarqBufferTx(unsigned int numProc, LteMacBase *owner, LteMac
     }
 }
 
+bool LteHarqBufferTx::isSelected()
+{
+    if (selectedAcid_ != HARQ_NONE)
+    {
+        return true;
+    }
+    return false;
+}
 UnitList LteHarqBufferTx::firstReadyForRtx()
 {
     unsigned char oldestProcessAcid = HARQ_NONE;

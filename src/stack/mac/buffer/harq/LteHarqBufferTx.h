@@ -140,7 +140,7 @@ class SIMULTE_API LteHarqBufferTx
      * @param acid the H-arq process
      */
     void dropProcess(unsigned char acid);
-
+    bool isSelected();
     /**
      * Sends simulated HARQNACK to all units of the process which contains
      * the one whose id is specified as parameter.
