@@ -63,12 +63,14 @@ void IP2lte::initialize(int stage)
 			nodeId_ = cellId;
 		}
 	}
-	else if (stage == inet::INITSTAGE_LINK_LAYER) {
+	else if (stage == 5) {
 		if(nodeType_ == ENODEB) {
 			registerInterface();
 		} else if (nodeType_ == UE) {
 			cModule *ue = getParentModule()->getParentModule();
-			nodeId_ = binder_->registerNode(ue, nodeType_, ue->par("masterId"));
+			nodeId_ = binder_->getUeId();
+			binder_->setUeId(nodeId_);
+					//binder_->registerNode(ue, nodeType_, ue->par("masterId"));
 			registerInterface();
 		} else {
 			throw cRuntimeError("unhandled node type: %i", nodeType_);
@@ -413,7 +415,9 @@ void IP2lte::registerInterface()
 	IInterfaceTable *ift = getModuleFromPar<IInterfaceTable>(par("interfaceTableModule"), this);
 	if (!ift)
 		return;
-	interfaceEntry = getContainingNicModule(this);
+
+	EV<<"Interface type: "<<this<<endl;
+	interfaceEntry = inet::getContainingNicModule(this);
 	interfaceEntry->setInterfaceName(par("interfaceName").stdstringValue().c_str());           // FIXME: user different name for lte interfaces
 	// TODO configure MTE size from NED
 	interfaceEntry->setMtu(1500);
