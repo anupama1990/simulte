@@ -15,8 +15,9 @@
 Define_Module(LteRlcUm);
 
 using namespace omnetpp;
+using namespace inet;
 
-UmTxEntity* LteRlcUm::getTxBuffer(FlowControlInfo* lteInfo)
+UmTxEntity* LteRlcUm::getTxBuffer(LteControlInfo* lteInfo)
 {
     MacNodeId nodeId = ctrlInfoToUeId(lteInfo);
 
@@ -30,7 +31,7 @@ UmTxEntity* LteRlcUm::getTxBuffer(FlowControlInfo* lteInfo)
      * Otherwise (i.e. if mapAllLcidsToSingleBearer_ is false), separate
      * entities are used for each LCID.
      */
-    LogicalCid lcid = mapAllLcidsToSingleBearer_ ? 1 : lteInfo->getLcid();
+    LogicalCid lcid = lteInfo->getLcid();
 
     // Find TXBuffer for this CID
     MacCid cid = idToMacCid(nodeId, lcid);
@@ -52,7 +53,7 @@ UmTxEntity* LteRlcUm::getTxBuffer(FlowControlInfo* lteInfo)
         }
 
         EV << "LteRlcUm : Added new UmTxEntity: " << txEnt->getId() <<
-        " for node: " << nodeId << " for Lcid: " << lcid << "\n";
+        " for node: " << nodeId << " for Lcid: " << cid << "\n";
 
         return txEnt;
     }
@@ -60,14 +61,14 @@ UmTxEntity* LteRlcUm::getTxBuffer(FlowControlInfo* lteInfo)
     {
         // Found
         EV << "LteRlcUm : Using old UmTxBuffer: " << it->second->getId() <<
-        " for node: " << nodeId << " for Lcid: " << lcid << "\n";
+        " for node: " << nodeId << " for Lcid: " << cid << "\n";
 
         return it->second;
     }
 }
 
 
-UmRxEntity* LteRlcUm::getRxBuffer(FlowControlInfo* lteInfo)
+UmRxEntity* LteRlcUm::getRxBuffer(LteControlInfo* lteInfo)
 {
     MacNodeId nodeId;
     if (lteInfo->getDirection() == DL)
@@ -159,12 +160,13 @@ void LteRlcUm::dropBufferOverflow(cPacket *pktAux)
 void LteRlcUm::handleUpperMessage(cPacket *pktAux)
 {
     emit(receivedPacketFromUpperLayer, pktAux);
-
+   // LteControlInfo* lteInfo = check_and_cast<LteControlInfo*>(pktAux->removeControlInfo());
     auto pkt = check_and_cast<inet::Packet *> (pktAux);
+
     auto lteInfo = pkt->getTagForUpdate<FlowControlInfo>();
 
-    auto chunk = pkt->peekAtFront<inet::Chunk>();
-    EV << "LteRlcUm::handleUpperMessage - Received packet " << chunk->getClassName() << " from upper layer, size " << pktAux->getByteLength() << "\n";
+
+    EV << "LteRlcUm::handleUpperMessage - Received packet from upper layer, size " << pktAux->getByteLength() << "\n";
 
     UmTxEntity* txbuf = getTxBuffer(lteInfo.get());
 
@@ -210,20 +212,22 @@ void LteRlcUm::handleLowerMessage(cPacket *pktAux)
     auto lteInfo = pkt->getTagForUpdate<FlowControlInfo>();
     auto chunk = pkt->peekAtFront<inet::Chunk>();
 
-    if (inet::dynamicPtrCast<const LteMacSduRequest>(chunk) != nullptr)
+    if (strcmp(pkt->getName(), "LteMacSduRequest") == 0)
     {
         // get the corresponding Tx buffer
-        UmTxEntity* txbuf = getTxBuffer(lteInfo.get());
+        UmTxEntity* txbuf = getTxBuffer(lteInfo->dup());
 
         auto macSduRequest = pkt->peekAtFront<LteMacSduRequest>();
         unsigned int size = macSduRequest->getSduSize();
 
         drop(pkt);
-
+        MacCid cid = ctrlInfoToMacCid(lteInfo->dup());
+        			EV<<"cid: "<<cid<<endl;
         // do segmentation/concatenation and send a pdu to the lower layer
-        txbuf->rlcPduMake(size);
+        txbuf->rlcPduMake(size,lteInfo->dup());
 
         delete pkt;
+
     }
     else
     {

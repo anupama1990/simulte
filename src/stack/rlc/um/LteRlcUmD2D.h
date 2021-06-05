@@ -44,7 +44,7 @@ class SIMULTE_API LteRlcUmD2D : public LteRlcUm
      * @return pointer to the TXBuffer for the CID of the flow
      *
      */
-    virtual UmTxEntity* getTxBuffer(FlowControlInfo* lteInfo) override;
+    virtual UmTxEntity* getTxBuffer(LteControlInfo* lteInfo) override;
 
     /**
      * UM Mode

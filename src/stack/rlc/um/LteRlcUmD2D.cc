@@ -13,7 +13,7 @@
 Define_Module(LteRlcUmD2D);
 using namespace omnetpp;
 
-UmTxEntity* LteRlcUmD2D::getTxBuffer(FlowControlInfo* lteInfo)
+UmTxEntity* LteRlcUmD2D::getTxBuffer(LteControlInfo* lteInfo)
 {
 	MacNodeId nodeId = ctrlInfoToUeId(lteInfo);
 	LogicalCid lcid = lteInfo->getLcid();
