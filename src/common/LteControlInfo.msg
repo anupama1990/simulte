@@ -48,7 +48,7 @@ enum LteTrafficClass;
 // - Source MAC Node ID
 // - Destination MAC Node ID
 //
-class LteControlInfo  extends inet::TagBase{
+class LteControlInfo extends inet::TagBase {
         //# Information shared between FlowControlInfo and UserControlInfo
         
         uint16 sourceId;                                     // Source MacNodeId
@@ -109,6 +109,7 @@ class FlowControlInfo extends LteControlInfo {
 
 class FlowControlInfoNonIp extends LteControlInfo {
         //# Non-IP control Information
+        @customize(true);
         int priority;
         long duration;
         long srcAddr;  //destination port
