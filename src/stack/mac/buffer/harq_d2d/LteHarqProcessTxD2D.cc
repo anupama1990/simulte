@@ -40,12 +40,12 @@ Packet *LteHarqProcessTxD2D::extractPdu(Codeword cw)
     numSelected_--;
     Packet *pkt = (*units_)[cw]->extractPdu();
     auto pdu = pkt->peekAtFront<LteMacPdu>();
-    auto infoVec = getTagsWithInherit<LteControlInfo>(pkt);
-    if (infoVec.empty())
+    auto infoVec = pkt->getTag<UserControlInfo>();
+    /*if (infoVec.empty())
         throw cRuntimeError("No tag of type LteControlInfo found");
-    auto info = infoVec.front();
+    auto info = infoVec.front();*/
 
-    if (info.getDirection() == D2D_MULTI)
+    if (infoVec->getDirection() == D2D_MULTI)
     {
         // if the pdu is for a multicast/broadcast connection, the selected unit has been emptied
         numEmptyUnits_++;
