@@ -15,7 +15,7 @@ UserControlInfo::~UserControlInfo()
 {
     if (userTxParams != NULL)
     {
-        delete userTxParams;
+       // delete userTxParams;
         userTxParams = NULL;
     }
 }
