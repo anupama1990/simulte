@@ -372,7 +372,7 @@ public:
 	 //Non-IP related
 	 void setIpBased(bool ip)
 	 {
-		 ip = true;
+		 ip = ip;
 	 }
 	 bool getIpBased()
 	 {
