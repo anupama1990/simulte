@@ -250,7 +250,7 @@ void LtePdcpRrcUeD2D::fromDataPort(cPacket *pktAux)
 		// setTrafficInformation(pkt, nonIpInfo);
 		long dstAddr = nonIpInfo->getDstAddr();
 		destId = binder_->getMacNodeId(dstAddr);
-
+		nonIpInfo->setIpBased(false);
 		// Cid Request
 		EV << "LtePdcpRrc : Received CID request for Traffic [ " << "Source: "
 				<< nonIpInfo->getSrcAddr() << " Destination: " << nonIpInfo->getDstAddr() << " ]\n";
