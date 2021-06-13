@@ -263,9 +263,9 @@ void LtePhyUeD2D::triggerHandover()
 	// currently, DM is possible only for UEs served by the same cell
 
 	// trigger D2D mode switch
-	cModule* enb = getSimulation()->getModule(binder_->getOmnetId(masterId_));
+	/*cModule* enb = getSimulation()->getModule(binder_->getOmnetId(masterId_));
 	D2DModeSelectionBase *d2dModeSelection = check_and_cast<D2DModeSelectionBase*>(enb->getSubmodule("lteNic")->getSubmodule("d2dModeSelection"));
-	d2dModeSelection->doModeSwitchAtHandover(nodeId_, false);
+	d2dModeSelection->doModeSwitchAtHandover(nodeId_, false);*/
 
 	LtePhyUe::triggerHandover();
 }
@@ -292,7 +292,35 @@ void LtePhyUeD2D::handleUpperMessage(cMessage* msg)
 	//    if (useBattery_) {
 	//    TODO     BatteryAccess::drawCurrent(txAmount_, 1);
 	//    }
+	if(strcmp(msg->getName(), "LteMacPdu")== 0)
+	{
+		UserControlInfo* lteInfo = new UserControlInfo();
+		EV<<"Broadcasting sidelink control information (SCI)"<<endl;
+		//sendBroadcast(sciframe);
 
+		//Prepare data frame for broadcast
+		frame = new LteAirFrame("airframePdu");
+		frame->encapsulate(check_and_cast<cPacket*>(msg));
+		LteRealisticChannelModel* chan = check_and_cast< LteRealisticChannelModel*>(getParentModule()->getSubmodule("channelModel"));
+
+		EV<<"Computing RSRP and RSSI vectors: "<<endl;
+		EV<<"Number of UEs: "<<binder_->getUeList()->size()<<endl;
+
+
+		// initialize frame fields
+
+		frame->setSchedulingPriority(airFramePriority_);
+		frame->setDuration(TTI);
+		// set current position
+		lteInfo->setCoord(getRadioPosition());
+		lteInfo->setTxPower(txPower_);
+		lteInfo->setD2dTxPower(d2dTxPower_);
+		frame->setControlInfo(lteInfo);
+
+		sendBroadcast(frame);
+		frameSent=true;
+		return;
+	}
 	if(strcmp(msg->getName(), "RRCStateChange")== 0)
 	{
 		RRCStateChange* rrcstate = check_and_cast<RRCStateChange*> (msg);
@@ -388,30 +416,7 @@ void LtePhyUeD2D::handleUpperMessage(cMessage* msg)
 
 	}
 
-	EV<<"Broadcasting sidelink control information (SCI)"<<endl;
-	//sendBroadcast(sciframe);
 
-	//Prepare data frame for broadcast
-	frame = new LteAirFrame("airframePdu");
-	frame->encapsulate(check_and_cast<cPacket*>(msg));
-	LteRealisticChannelModel* chan = check_and_cast< LteRealisticChannelModel*>(getParentModule()->getSubmodule("channelModel"));
-
-	EV<<"Computing RSRP and RSSI vectors: "<<endl;
-	EV<<"Number of UEs: "<<binder_->getUeList()->size()<<endl;
-
-
-	// initialize frame fields
-
-	frame->setSchedulingPriority(airFramePriority_);
-	frame->setDuration(TTI);
-	// set current position
-	lteInfo->setCoord(getRadioPosition());
-	lteInfo->setTxPower(txPower_);
-	lteInfo->setD2dTxPower(d2dTxPower_);
-	frame->setControlInfo(lteInfo.get());
-
-	sendBroadcast(frame);
-	frameSent=true;
 
 	//Decrement the re-selection counter on successful data frame transmission in mode 4
 
