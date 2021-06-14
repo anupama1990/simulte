@@ -397,8 +397,9 @@ void LteMacUeD2D::handleMessage(cMessage* msg)
 
 	cPacket* pkt = check_and_cast<cPacket *>(msg);
 	cGate* incoming = pkt->getArrivalGate();
+	
 
-
+	
 
 	if (strcmp(pkt->getName(), "CSRs")== 0)
 	{
@@ -482,10 +483,12 @@ void LteMacUeD2D::handleMessage(cMessage* msg)
 
 		if ((strcmp(pkt->getName(), "newDataPkt")== 0)||(strcmp(pkt->getName(), "LtePdcpPdu")== 0))
 		{
-
+			
+			setIpBased(false);
 			EV<<"RRC state: "<<rrcCurrentState<<endl;
 			if (rrcCurrentState=="RRC_IDLE")
 			{
+
 				LteMacUe::handleUpperMessage(pkt);
 				EV<<"Calling Sidelink Configuration: "<<endl;
 				SidelinkConfiguration* slConfig = check_and_cast<SidelinkConfiguration*>(getParentModule()->getSubmodule("mode4config"));
@@ -595,7 +598,7 @@ LteMacUeD2D::macHandleGrant(cPacket* pktAux)
 	}
 
 	EV << NOW << "Node " << nodeId_ << " received grant of blocks " << grant->getTotalGrantedBlocks()
-            								   << ", bytes " << grant->getGrantedCwBytes(0) <<" Direction: "<<dirToA(grant->getDirection()) << endl;
+            										   << ", bytes " << grant->getGrantedCwBytes(0) <<" Direction: "<<dirToA(grant->getDirection()) << endl;
 
 	// clearing pending RAC requests
 	racRequested_=false;
@@ -854,7 +857,7 @@ void LteMacUeD2D::handleSelfMessage()
 			}
 
 			EV << "\t [process=" << (unsigned int)currentHarq_ << "] , [retx=" << ((retx)?"true":"false")
-                                                                        								  << "] , [n=" << cwListRetx.size() << "]" << endl;
+                                                                        										  << "] , [n=" << cwListRetx.size() << "]" << endl;
 
 			// if a retransmission is needed
 			if(retx)
@@ -904,7 +907,7 @@ void LteMacUeD2D::handleSelfMessage()
 		for(; jt != jet; ++jt)
 		{
 			EV_DEBUG << "\t\t cicloInner " << cntInner << " - jt->size=" << jt->size()
-                                                                        								  << " - statusCw(0/1)=" << jt->at(0).second << "/" << jt->at(1).second << endl;
+                                                                        										  << " - statusCw(0/1)=" << jt->at(0).second << "/" << jt->at(1).second << endl;
 		}
 	}
 	//======================== END DEBUG ==========================
